@@ -1,0 +1,399 @@
+\documentclass[10pt]{article}
+\usepackage{NotesTeXV3,lipsum}
+\usepackage{cancel}
+\usepackage{pgfplots}
+\usepackage{esint}
+\usepackage{listings}
+\usetikzlibrary{shadows}
+\usetikzlibrary{shapes}
+\usetikzlibrary{decorations}
+\usetikzlibrary{arrows,decorations.markings} 
+\pgfplotsset{compat=newest}
+\usepgfplotslibrary{colormaps}
+% \usepackage{showframe}
+% http://tex.stackexchange.com/q/169557/5764
+\usepackage{mathtools}
+\usepackage{circuitikz}
+\DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+\newcommand{\vectorproj}[2][]{\text{proj}_{\vect{#1}}\vect{#2}}
+\newcommand{\vect}{\mathbf}
+
+\begin{document}
+	\title{{CS10 -- Computer Architecture and Organization}\\{\normalsize{\itshape My Notes}}}
+	\author{Leonard Mohr}
+	\affiliation{
+	Student at Foothill College
+	}
+	\emailAdd{leonardmohr@gmail.com}
+	\maketitle
+	\newpage
+	\pagestyle{fancy}
+
+\section{Computer Abstractions and Technology}
+\subsection{Introduction}\label{subsec:}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=11cm]{1.png}
+  \caption{We can describe storage in binary or decimal notation. We are much more familiar with the decimal term.  Note also the size difference between the two: binary term gets progressivly larger.}
+  \label{fig:}
+\end{figure}
+
+\subsubsection{Program Performance}
+One of the main goals for both the hardware designer and the software designer is to improve performance.  This can be achieved in different ways (just think about how quick sort is much faster than bubble sort, and the apple M1 processor is much faster than the intel processors they replaced).
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=11cm]{2.png}
+  \caption{Here we can see the various ways program performance can be improved.}
+  \label{fig:}
+\end{figure}
+
+\textbf{Check Yourself}
+\begin{enumerate}
+\item As mentioned earlier, both the software and hardware affect the performance of a program. Can you think of examples where each of the following is the right place to look for a performance bottleneck?
+\begin{enumerate}[label=\alph*)]
+\item The algorithm chosen
+  \begin{tcolorbox}[%
+    enhanced, 
+    breakable,
+    frame hidden,
+    overlay broken = {
+      
+      (frame.north west) rectangle (frame.south east);},
+    ]
+If a program that sorts a really long list of names is taking a long time, you might want to look at the algorithm being used.
+\end{tcolorbox}
+\item The programming language or compiler
+  \begin{tcolorbox}[%
+    enhanced, 
+    breakable,
+    frame hidden,
+    overlay broken = {
+      
+      (frame.north west) rectangle (frame.south east);},
+    ]
+If your program could is not language dependent, you could look at using a compiled language (like C), as opposed to an interpreted language like Python.
+\end{tcolorbox}
+\item The operating system
+  \begin{tcolorbox}[%
+    enhanced, 
+    breakable,
+    frame hidden,
+    overlay broken = {
+      
+      (frame.north west) rectangle (frame.south east);},
+    ]
+If one program runs well, but two at a time don't, then maybe the operating system isn't distributing it's resources efficiently.
+\end{tcolorbox}
+\item The processor
+  \begin{tcolorbox}[%
+    enhanced, 
+    breakable,
+    frame hidden,
+    overlay broken = {
+      
+      (frame.north west) rectangle (frame.south east);},
+    ]
+If the computer in general is using a lot of energy, you might want to look at the processor. Similarily, if you are doing compute heavy tasks such as vdeo editing, you might need a processor upgrade.
+\end{tcolorbox}
+
+\item The I/O system and devices
+  \begin{tcolorbox}[%
+    enhanced, 
+    breakable,
+    frame hidden,
+    overlay broken = {
+      
+      (frame.north west) rectangle (frame.south east);},
+    ]
+If it takes a long time to write to a hard drive, you might look at upgrading to a SSD.
+  \end{tcolorbox}
+\end{enumerate}
+\end{enumerate}
+
+\subsection{Eight Great Ideas in Computer Architecture}\label{subsec:}
+\begin{enumerate}
+\item \textbf{Moore's Law}\\
+  Moore's Law resulted from a 1965 prediction that integrated circuit (IC) resources would double every 18-24 months.
+\begin{marginfigure}
+  \begin{center}
+    \includegraphics[width=\linewidth]{3.png}
+  \end{center}
+  \caption{Moore's Law in action.}
+\end{marginfigure}%
+
+\item \textbf{Use Abstraction to Simplify Design}\\
+  To increase productivity, by design both computer architects and programmers try use abstractions to hide the lower-level details and provide a simpler to work with.  For example, the operating system abstracts away the complexity of the memory system so that programs are provided with a much simplified view of the memory, and the details are handled by the operating system.
+
+\item \textbf{Make the Common Case Fast}\\
+  Better performance gains can be made if you optimize for what the prgram is going to do most often.
+\item \textbf{Performance via Parallelism}\\
+  We can make a program a lot faster by performing multiple tasks at once.  This is especially true with the advent of multi-core processors.
+\item \textbf{Performance via Pipelining}\\
+  If you are moving a lot of bricks from one place to another (using just manpower) it would be a lot more efficient to set up a line of people, and pass the bricks down the line, than to just have everyone running back and forth.  The same principle can be used in computers.
+
+\item \textbf{Performance via Prediction}\\
+  When a processor encounters an if statement, it might say that on average the result is true, and procede like it is, so that it keep going, and then the if qualifier can be processed at a later date.
+
+\item \textbf{Hierarchy of Memories}\\
+  By using different types of memory, from really small and really fast, to really large and slow, a memory hierarchy is created.  Caches give the programmer the illusion that main memory is nearly as fast as the top of the hierarchy and nearly as big and cheap as the bottom of the hierarchy.
+
+\item \textbf{Dependability via Redundancy}\\
+Because we are sad when a computer dies, we want to prevent the death of the computer.  To do this we make them dependable.  This can be achieved by including redundant components that can both take over in the event of a failure as well as detect when a failure has occured.
+\end{enumerate}
+
+\subsection{Below Your Program}\label{subsec:}
+The Operating System is a great example of abstraction.  Some of its most important functions are:
+\begin{itemize}
+\item Handling basic input and output operations
+\item Allocating storage and memory
+\item Provided for protected sharing of the computer among multiple applications using it simultaneously.
+\end{itemize}
+Another example of abstraction is high-level programming languages like C.  When computers first came about, programmers programmed in binary; they wrote their programs in $1$'s and $0$'s (the language of the computer).  Since that was tedious, they invented the assembler which would convert assembly language into binary code.  Next came the compiler which would convert higher order languages into assembly.
+
+Another benefit of the programming languages is it allows one to chose the specific language that is best for the task.  Also, programs don't have to be written for a specific processor, since the compiler and assembler can package it for different computers.
+
+\subsection{Under the Covers}\label{subsec:}
+The five classic components of a computer are input, output, memory, datapath, and control, with the last two sometimes combined and called the processor. This organization is independent of hardware technology: you can place every piece of every computer, past and present, into one of these five categories.
+\begin{marginfigure}
+  \begin{center}
+    \includegraphics[width=\linewidth]{4.png}
+  \end{center}
+  \caption{Here we see the flow of information in a computer.  The processor gets instructions and data from memory. Input writes data to memory, and output reads data from memory.  Control sends the signals that determine the operations of the datapath, memory, input, and output.}
+\end{marginfigure}%
+\subsubsection{Parts of the Computer}
+\begin{itemize}
+\item Integrated Circuit: Also called a chip. A device combining dozens to millions of transistors.
+\item Central Processing Unit (CPU): Also called the processor. The active part of the computer, which contains the datapath and control and which adds numbers, tests numbers, signals I/O devices to activate, and so on.
+\item Datapath: The component of the processor that performs arithmetic operations
+\item Control: The component of the processor that commands the datapath, memory, and I/O devices according to the instructions of the program.
+\item Memory: The storage area in which programs are kept when they are running and that contains the data needed by the running programs.
+\item Dynamic Random Access Memory (DRAM): Memory built as an integrated circuit; it provides random access to any location Access times are 50 nanoseconds and cost per gigabyte in 2012 was $\$5$ to $\$10$.
+\item Cache Memory: Consists of a small, fast memory that acts as a buffer for the DRAM memory.
+\item Static Random Access Memory: SRAM is faster but less dense, and hence more expensive, than DRAM.
+\item Instruction Set Architector: The interface between the hardware and the lowest-level software.  This includes all the information necessary to write a machine language program that will run correctly, including instructions, registers, memory access, I/O, and so on.
+\item Application Binary Interface (ABI): The user portion of the instruction set plus the operating system interfaces used by application programmers. It defines a standard for binary portability across computers. 
+\end{itemize}
+\addtocounter{subsection}{1}
+\subsection{Performance}\label{subsec:}
+When talking about computers, we often want to look at the performance of the computer.  But how can we define performance?
+\begin{definition}
+  \textbf{Response Time}\\
+  Also referred to as \textbf{execution time}.  This is the total time required for the computer to complete a task, including disk access, memory aaccesses, I/O activities, operating system overhead, CPU execution time, and so on.
+\end{definition}
+\begin{definition}
+  \textbf{Throughput / Bandwidth}\\
+  This measures the number of tasks computed per unit time.
+\end{definition}
+For the time being, we will mostly be looking at response time.  So that a higher number represents a machine with better performance we will say that
+\[\text { Performance }_{\mathrm{X}}=\frac{1}{\text { Execution time }_{\mathrm{X}}}.\]
+Also, we often want to say that computer ``X is $n$ times as fast as Y'', to compute $n$ we say:
+\[\frac{\text { Performance }_{\mathrm{X}}}{\text { Performance }_{\mathrm{Y}}}=n.\]
+\begin{marginfigure}
+\textbf{CPU execution time} or simply \textbf{CPU time} is the actual time the CPU spends computing for a specific task.
+\end{marginfigure}%
+\subsubsection{Clock Rate and Clock Period}
+Designers refer to the length of a \textbf{clock period} both as the time for a complete clock cycle (e.g., 250 picoseconds) and as the \textit{clock rate} (e.g., 4 gigahertz, or 4GHz), which is the inverse of the clock period.
+
+For example a clock rate of
+\begin{align*}
+  4\text{GHz } &= 4,000,000,000 \frac{\text{cycles}}{\text{sec}}\\
+               &\equiv \frac{1 \text{ cycle}}{4,000,000,000 \text{ second}}\\
+               &= 0.00000000025 \frac{\text{cycle}}{\text{second}}\\
+               &= \frac{1}{250} \frac{\text{cycle}}{\text{picosecond}}.
+\end{align*}
+We can relate clock cycles and clock cycle time to CPU time:
+$$
+\begin{aligned}
+& \text { CPU execution time } \\
+& \text { for a program }
+\end{aligned}=\begin{aligned}
+& \text { CPU clock cycles } \\
+& \text { for a program }
+\end{aligned} \times \text { Clock cycle time }
+$$
+or alternatively,
+$$
+\begin{aligned}
+& \mathrm{CPU} \text { execution time } \\
+& \text { for a program }
+\end{aligned}=\frac{\mathrm{CPU} \text { clock cycles for a program }}{\text { Clock rate. }}
+$$
+\subsubsection{Instruction Performance}
+In addition to thinking about clock cycles and CPU time, we also need to think about number of instructions there are in a program and the time each instruction takes:
+\[\text{CPU clock cycles } = \text{ Instructions for a Program} \times \frac{\text{average clock cycles}}{\text{instruction}}\]
+\begin{marginfigure}
+\textbf{Clock Cycles per Instruction (CPI)} is the average number of clock cycles per instruction for a program or program fragement.
+\end{marginfigure}%
+\subsubsection{The Classic CPU Performance Equation}
+Putting everything from above together we have
+\[
+\mathrm{CPU} \text { time }=\text { Instruction count } \times \mathrm{CPI} \times \text { Clock cycle time }
+\]
+and
+\[\mathrm{CPU} \text { time }=\frac{\text { Instruction count } \times \mathrm{CPI}}{\text { Clock rate}}.\]
+We also have
+\[\text { Time }=\text { Seconds } / \text { Program }=\frac{\text { Instructions }}{\text { Program }} \times \frac{\text { Clock cycles }}{\text { Instruction }} \times \frac{\text { Seconds }}{\text { Clock cycle.}}\]
+\begin{marginfigure}
+Processors these days can vary their clock rates.  For example Intel Core i7 chips temporarily increase clock rate by $10\%$ until the chip gets too warm.  Thus we need to use the average clock rate for a program.
+  \caption{}
+\end{marginfigure}%
+\addtocounter{subsection}{3}
+\subsection{Fallacies and Pitfalls}\label{subsec:}
+\subsubsection{Amdahl's Law}
+\begin{definition}
+  \textbf{Amdahl's Law}\\
+  A rule stating that the performance enhancement possible with a given improvement is limited by the amount that the improved feature is used:
+\begin{align*}
+  \text{Execution time after improvement}
+  &= \frac{\text{Execution time affected by improvement}}{\text{Amount of improvement}}\\
+    &+ \text{ Execution time unaffected} 
+\end{align*}
+where Amount of improvement $= n$.
+\end{definition}
+We thus see that there is only so much benefit that can be achieved by improving a part of the program that is rarely used.  For this reason we want to make the common case fast!
+\subsubsection{MIPS}
+One should be wary about using only a subset of the performance equation as a performance metric; one can't determine performance just by looking at clock rate, instruction count, or CPI alone.\\\\
+An alternative to time is \textbf{MIPS (million instructions per second)}:
+\begin{align*}
+\text{MIPS }&= \frac{\text{Instruction count}}{\text{Execution time } \times 10^6}.
+\end{align*}
+There are a couple problems with MIPS:
+\begin{itemize}
+\item MIPS specifies the instruction execution rate but does not take into account the capabilities of these instructions. Therefore we can't compare computers with different instruction sets.
+\item MIPS varies between programs on the same computer; thus a computer cannot have a single MIPS rating.
+\end{itemize}
+\[\text { MIPS }=\frac{\text { Instruction count }}{\frac{\text { Instruction count } \times \text { CPI }}{\text { Clock rate }} \times 10^6}=\frac{\text { Clock rate }}{\mathrm{CPI} \times 10^6}.\]
+\subsubsection{Check Yourself}
+Consider the following performance measurements for a program:
+\begin{center}
+\includegraphics[width=6cm]{5.png}
+\end{center}
+Which computer is faster and which has the higher MIPS rating?
+  \begin{tcolorbox}[%
+    enhanced, 
+    breakable,
+    frame hidden,
+    overlay broken = {
+      
+      (frame.north west) rectangle (frame.south east);},
+    ]
+    First looking at computer A.
+\begin{align*}
+  \text{ Time}(A) &= \frac{\text{CPU Clock Cycles} }{\text{Clock Rate} }\\
+                  &= \frac{\text{Instruction Count }\times \text{ CPI}}{\text{Clock Rate}}\\
+                  &= \frac{10 \times 10^9 \text{ instructions} \times \frac{1 \text{ cycle}}{\text{instruction}}}{4\times 10^9 \frac{\text{cycles}}{\text{second}}}\\
+  &= 2.5 \text{ seconds}.
+\end{align*}
+\begin{align*}
+  \text{MIPS}(A) &= \frac{\text{Instruction Count}}{\text{Execution Time } \times 10^6}\\
+                 &= \frac{10 \times 10^9 \text{ instructions}}{2.5 \text{ seconds } \times 10^6}\\
+                 &= \frac{4 \times 10^3 \text{ million instructions}}{\text{second}}.
+\end{align*}
+Now looking at computer B.
+\begin{align*}
+ \text{ Time}(B) &= \frac{\text{CPU Clock Cycles} }{\text{Clock Rate} }\\
+                  &= \frac{\text{Instruction Count }\times \text{ CPI}}{\text{Clock Rate}}\\
+                  &= \frac{8 \times 10^9 \text{ instructions} \times \frac{1.1 \text{ cycles}}{\text{instruction}}}{4\times 10^9 \frac{\text{cycles}}{\text{second}}}\\
+  &= 2.2 \text{ seconds}.
+\end{align*}
+\begin{align*}
+  \text{MIPS}(B) &= \frac{\text{Instruction Count}}{\text{Execution Time } \times 10^6}\\
+                 &= \frac{8 \times 10^9 \text{ instructions}}{2.2 \text{ seconds } \times 10^6}\\
+                 &\approx \frac{3.6 \times 10^3 \text{ million instructions}}{\text{second}}.
+\end{align*}
+We thus see that Computer A has a higher MIPS score but runs slower.
+\end{tcolorbox}
+
+\section{Instructions: Language of the Computer}
+\addtocounter{subsection}{1}
+\subsection{Operations of the Computer Hardware}\label{subsec:}
+\subsubsection{MIPS Operands}
+\begin{center}
+\includegraphics[width=\linewidth]{6.png}
+\end{center}
+\subsubsection{MIPS Instructions}
+\begin{center}
+\includegraphics[width=\linewidth]{7.png}
+\end{center}
+Note how just about all operations have exactly three operands.  This conforms to the philosophy of keeping the hardware simple: hardware for a variable number of operands is more complicated than hardware for a fixed number.
+
+\subsection{Operands of the Computer Hardware}\label{subsec:}
+\subsubsection{Memory Operands}
+Let's say we have the following C statement
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+g = h + A[8];
+\end{lstlisting}
+What will be the associated MIPS code if $g$ and $h$ are in registers $\$s1$ and $\$s2$, and that the base address of the array is in $\$s3$.
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+lw    $t0, 32($s3)     # Temporary reg $t0 gets A[8]
+add   $t0, $s2, $t0    # Temporary reg $t0 gets h + A[8]
+sw    $t0, 48($s3)     # A[12] <--- $t0
+\end{lstlisting}
+Note that MIPS uses byte addressing, and so to get to the $8$th index, you need to add $8*4$ since the size of each array index is $4$ bytes.  Also note that words must start with addresses that are multiples of $4$.
+\begin{marginfigure}
+\textbf{Alignment Restriction} is the requirement that data be aligned in memory on natural boundaries.
+\end{marginfigure}%
+
+\subsubsection{Constant or Immediate Operands}
+Let's say for example that we want to add $5$ to some register for whatever reason, instead of loading that from a memory location into a temporary register, and then adding the temporary register to the desired register we can use the instruction add immediate:
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+addi    $s3, $s3, 4      # $s3 = $s3 + 4
+\end{lstlisting}
+By including this constant opperation the processor can operations much faster and using less energy.  Because more than half of MIPS arithmetic instructions have a constant as an operand when running the SPEC CPU2006 benchmarks this is an example of making the common case fast.  
+
+\subsection{Signed and Unsigned Numbers}\label{subsec:}
+\begin{marginfigure}
+\textbf{Overflow} occurs when after performing an arithmatic operation on two numbers results in a number that can't be stored in the number of bits available to register (32 in case of MIPS).
+\end{marginfigure}%
+\subsubsection{Unsigned Numbers}
+In any number base, the value of the $i$th digit $d$ is
+\[d \times \text{ Base}^i.\]
+Thus for example, in binary
+\begin{align*}
+  101 &= (1\cdot 2^2) + (0 \cdot 2^1) + (1 \cdot 2^0)\\
+      &= 4 + 0 + 1\\
+      &= 5.
+\end{align*}
+\subsubsection{Twos Complement}
+The idea of twos complement is that the most significant bit indicates the sign of the number, 1 if negative and 0 if positive (zero being treated as a positive number). But instead of merely reprsenting the sign, it represents the negative equivalent value of that number.  So for example
+\begin{align*}
+  1 &\text{ represents } -1\\
+  10 & \text{ represents } -2\\
+  100 & \text{ represents } -4
+\end{align*}
+and the other bits are their normal positive values:
+\begin{align*}
+  11 &\text{ represents } -1\\
+  111 & \text{ represents } -1\\  
+  101 & \text{ represents } -3\\
+  110 & \text{ represents } -2.
+\end{align*}
+To achieve two's complement representation you
+\begin{enumerate}
+\item Start with the equivalent positive number
+\item Invert all bits (change every 0 to 1, and every 1 to 0)
+\item Add 1 to the inverted number, ignoring overflow.
+\end{enumerate}
+The reason this works is because $x + \bar{x} = -1$ and therefore $\bar{x} + 1 = -x$, where $\bar{x}$ is $x$ inverted.  You can use this process to convert from negative to positive and vice versa:
+\begin{itemize}
+\item Twos complement representation of $-5$
+\begin{align*}
+  0101 &= 5\\
+  1010 &= \bar{5} && \textit{\textcolor{blue}{Inverse of 5}}\\
+  1011 &= -5 && \textit{\textcolor{blue}{-5 represented in twos complement}}
+\end{align*}
+\item Twos complement representation of $5$
+  \begin{align*}
+    1011 &= -5\\
+    0100 &= \overline{-5}\\
+    0101 &= 5.
+  \end{align*}
+\end{itemize}
+In two's complement, if you want to use more bits to represent the same number, you just use \textbf{sign extension} (repeat the most significant bit):
+\begin{align*}
+  0111 &\equiv 7 \equiv 0000 \; 0111\\
+  1011 &\equiv -5 \equiv 1111 \;  1011.
+\end{align*}
+
+\end{document}
+      
