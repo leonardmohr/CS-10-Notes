@@ -475,6 +475,106 @@ sub    $t2, $t0, $t1
 \end{lstlisting}
 
   \end{tcolorbox}
+  \addtocounter{subsection}{1}
+  \subsection{Instructions for Making Decisions}\label{subsec:}
+  \subsubsection{Branch Instructions}
+  MIPS has two decision making instructions:
+  \begin{itemize}
+  \item \texttt{beq register1, register2, L1}\\
+    Go to the statement labeled \texttt{L1} if the value in \texttt{register1} equals the value in \texttt{register2};
+  \item \texttt{bne register1, register2, L1}\\
+    Go to statement labeled \texttt{L1} if value in \texttt{register1} does not equal value in \texttt{register2}. 
+  \end{itemize}
+  For example, the C code
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+if (i == j)
+    f = g + h;
+else
+    f = g-h;
+\end{lstlisting}
+  where \texttt{f} through \texttt{j} correspond to \texttt{\$s0} through \texttt{\$s4}, corresponds to the MIPS code
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+    bne    $s3, $s4, Else
+    add    $s0, $s1, $s2     # f = g + h
+    j      Exit              # go to Exit
+
+Else:
+    sub    $s0, $s1, $s2     # f = g-h
+
+Exit:
+\end{lstlisting}
+Notice how we did things in reverse; instead of checking for equality (like in the C code), we checked for inequality.
+\begin{marginfigure}
+The assembler relieves the compiler and the assembly language programmer from the tedium of calculated addresses for branches.
+\end{marginfigure}%
+
+\subsubsection{Loops}
+How could we use our branch statements to compile the following while Loop:
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+while (save[i] == k)
+    i += 1;
+\end{lstlisting}
+where \texttt{i} and \texttt{k} correspond to registers \texttt{\$s3} and \texttt{\$s5}. The address of \texttt{save[0]} is in \texttt{\$s6}.
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+Loop:
+  sll    $t1, $s3, 2     # $t1 <-- i * 4
+  add    $t1, $t1, $s6   # $t1 <-- address of save[i]
+  lw     $t0, 0($t1)     # $t0 <-- save[i]
+  bne    $t0, $s5, Exit  # if (save[i] != k) Exit
+  addi   $s3, $s3, 1     # i += 1
+  j      Loop            # go to Loop
+
+Exit:
+\end{lstlisting}
+\begin{marginfigure}
+This is an example of a \textbf{basic block}.  This is a sequence without branches, except possibly at the end, and without branch targets or branch labels, except possibly at the beginning.
+\end{marginfigure}%
+Because MIPS is byte addressed, to get the memory address of \texttt{save[i]} we need to multiply $i \cdot 4$ and add that to the base address.  We then load that value to a temporary register, and test the condition.
+
+\subsubsection{Unsigned Comparison Tests}
+In addition to testing for equality, we might also want to test for less than, or greater than.  To test if less than the instruction ``set on less than''
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+  sltu    $t0, $s3, $s4    # $t0 = 1 if $s3 < $s4; otherwise 0
+\end{lstlisting}
+This sets the destination register to $1$ if less than, and $0$ if not.  An immediate version of this instruction also exists:
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+  sltiu    $t0, $s2, 10    # $t0 = 1 if $s2 < 10, 0 otherwise
+\end{lstlisting}
+\begin{marginfigure}
+All relative conditions equal, not equal, less than, less than or equal, greater than, and greater than or equal, can all be created using \texttt{slt}, \texttt{slti}, \texttt{beq}, \texttt{bne}, and \texttt{\$zero} register.   
+\end{marginfigure}%
+\subsubsection{Signed Comparison Tests}
+We have to remember that with negative numbers, the most significant bit is turned on, and so using an unsigned comparison between $-1$ and $5$: $1111_{\text{TWO}} < 0101_{\text{TWO}}$ would return false.  Thus, for signed comparisons we have \texttt{slt} and \texttt{slti}:
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+  slt    $t0, $s3, $s4    # $t0 = 1 if $s3 < $s4; otherwise 0
+  slti   $t0, $s2, 10    # $t0 = 1 if $s2 < 10, 0 otherwise
+\end{lstlisting}
+
+\subsubsection{Bounds Checking Shortcut}
+Let's say we want to check if both
+\[x < y \quad \text{ and } \quad x \geq 0\]
+where $x$ is a and $y$ are signed integers (and $y > 0$).  Assume that \texttt{\$s0} holds $x$ and \texttt{\$s1} holds $y$.   Than we could do
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+# Check if x < y
+  slt    $t0, $s0, $s1
+  beq    $t0, $zero, False
+
+# Check if x >= 0
+  slt    $t0, $s0, $zero      # If x < 0
+  bne    $t0, $zero, False
+
+# Statement is true
+  j      True
+\end{lstlisting}
+We can actually check for both $x < y$ and $x \geq 0$ in one go by treating $x$ and $y$ as unsigned integers.  The idea here is that since a negative number will have its most significant bit turned on, it looks like a very large unsigned number.  Therefore no matter how large $y$ is, if $x$ is a negative number it will appear as a larger unsigned number.  Thus,
+\[0 \leq x \leq y\]
+will only be true if $x$ is nonnegative and less than $y$, and when treated as unsigned numbers, testing if $x < y$ will also check if $x \geq 0$:
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+sltu $t0, $s0, $s1
+beq  $t0, $zero, False
+j    True
+\end{lstlisting}
+This shortcut is really helpful if we want to check if some index is out of bounds for a given array.  For example, let's say we have an array \texttt{example} whose upper bounds $y$.  Then we could use the code above to check if some index $i$ is in bounds ($0 \leq x < y$).
 
 
 \end{document}
