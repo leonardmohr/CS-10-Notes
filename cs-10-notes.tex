@@ -395,5 +395,70 @@ In two's complement, if you want to use more bits to represent the same number, 
   1011 &\equiv -5 \equiv 1111 \;  1011.
 \end{align*}
 
+\subsection{Representing Instructions in the Computer}\label{subsec:}
+Now that we know how to tell the computer what to do (assembly language), what instructions are the computer actuall following (machine language)?
+Well, first of all, computers just read a stream of 1's and 0's.  Depending upon the context, this stream could represent a string, a number, or an instruction.
+\subsubsection{Hexadecimal}
+Although we now know how to write numbers in binary, it can be a bit tedious, so we use hexadecimial (base 16).  Because both binary and hexadecimal are powers of two, they play nicely together.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=7cm]{8.png}
+  \caption{To convert from hexadecimal to binary just replace hexadecimal digit by the corresponding four binary digits and vice versa. If the length of the binary number is not a multiple o 4, go from right to left.}
+  \label{fig:}
+\end{figure}
+\subsubsection{MIPS Fields}
+Because computers just read a string of 1's and 0's, how does the computer know where each instruction begins and ends?
+When converting from assembly $\longrightarrow$ binary, MIPS instructions are formatted into 32 bits.\\
+\textbf{Register Instructions (R-type)}
+\begin{figure}[H]
+  \centering
+ \includegraphics[width=7cm]{9.png}
+\caption{The various MIPS fields for R-type (register) instructions.}
+  \label{fig:}
+\end{figure}
+
+\begin{itemize}
+\item op: Basic operation of the instruction, traditionally called the opcode.  The value of this lets computer know meaning of, and size of the following fields.
+\item rs: The first register source operand
+\item rt: The second register source operand
+\item rd: The register destination operand. It gets the result of the operation.
+\item shamt: Shift amount. See 2.6 for more details.
+\item funct: Function. This field, often called the function code, selects the specific variant of the operation in the op field.
+\end{itemize}
+\textbf{Immediate Instructions (I-type)}\\
+
+You might have noticed that not all instructions fit into the above format.  For example Let's say you wanted to add a constant to a register and store it in another?  Well, at the moment we would only have $5$-bits available to hold a number, that's not a lot.  The max constant value would be $2^5 - 1 = 31$ (assuming unsigned number), that's not very big.  Instead we have a different instruction format:
+\begin{center}
+\includegraphics[width=7cm]{10.png}
+\end{center}
+Note that instructions with this format type are not just add immidiate type instructions, they are also used for load word instructions (among others). The following instruction 
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+lw    $t0, 1200($t1)   # $t0 <--- A[300]
+add   $t0, $s2, $t0    # $t0 <--- h + A[300]
+sw    $t0, 1200($t1)   # A[300] <--- $t0
+\end{lstlisting}
+is expressed as follows:
+\begin{center}
+\includegraphics[width=7cm]{11.png}
+\end{center}
+and in binary:
+\begin{center}
+\includegraphics[width=7cm]{12.png}
+\end{center}
+From this, you can see that each register has an associated reference number:
+\begin{center}
+\includegraphics[width=7cm]{13.png}
+\end{center}
+Here are the opcodes for the instructions we have seen so far:
+\begin{center}
+  \includegraphics[width=7cm]{14.png}
+\end{center}
+\subsubsection{Check Yourself}
+What MIPS instruction does this represent?
+\begin{center}
+\includegraphics[width=\linewidth]{15.png}
+\end{center}
+
+
 \end{document}
       
