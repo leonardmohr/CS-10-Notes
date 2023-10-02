@@ -456,8 +456,25 @@ Here are the opcodes for the instructions we have seen so far:
 \subsubsection{Check Yourself}
 What MIPS instruction does this represent?
 \begin{center}
-\includegraphics[width=\linewidth]{15.png}
+\includegraphics[width=7cm]{15.png}
 \end{center}
+  \begin{tcolorbox}[%
+    enhanced, 
+    breakable,
+    frame hidden,
+    overlay broken = {
+      (frame.north west) rectangle (frame.south east);},
+    ]
+    From the ocode of $0$ and function code of $34$ we know this is a subtract function call.
+
+    We are dealing with registers $8,9,10$ which are \texttt{\$t0}, \texttt{\$t1}, and \texttt{\$t2} respectively.
+
+    Because the MIPS register arguments are orderd \texttt{rd}, \texttt{rs}, \texttt{rt}  we have get the MIPS code
+    \begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+sub    $t2, $t0, $t1
+\end{lstlisting}
+
+  \end{tcolorbox}
 
 
 \end{document}
