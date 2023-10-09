@@ -873,9 +873,49 @@ sw $s5, 20($fp)  # 5th arg in the stack. Always here!
 \end{lstlisting}
 \item You must preserve register \texttt{\$ra} because a called-function \texttt{jal} destroys the value, and it is a preserved register. 
 \end{itemize}
+\addtocounter{subsection}{1}
+\subsection{MIPS Addressing for 32-bit Immediates and Addresses}\label{subsec:}
+\subsubsection{32-bit Constant into Register}
+If you have been following closely, you may have noticed that when adding a constant to a register there are only $16$ bits available for the constant (as it is an I-type instruction):
+\begin{lstlisting}[style=CStyle, numbers=none, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, numberstyle=\color{blue}, escapeinside=..]
+ ------ ----- ----- ----------------
+|  op  |  rt |  rs |    constant    |
+ ------ ----- ----- ----------------
+   6      5     5          16
+\end{lstlisting}
+The question then remains, what do you do if you want to place a constant larger than $16$ bits?  You achieve this with the following two instructions:
+\begin{enumerate}
+\item \texttt{lui rt, immediate}\\
+  which loads immediate value into the upper $16$ bits of \texttt{rt} and zeros lower $16$ bits.
+\item \texttt{ori rt, rs, immediate}\\
+  Bitwise or of \texttt{rs} and \texttt{immediate} placed into \texttt{rt} (\texttt{rt <-- rs | imm}).  
+\end{enumerate}
+\begin{marginfigure}
+A word of caution.  Using the instruction \texttt{addi} sign extends the msb of immediate. 
+\end{marginfigure}%
+\subsubsection{Branch Addressing}
+Branch instructions take are I-type instructions:
+\begin{lstlisting}[style=CStyle, numbers=none, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, numberstyle=\color{blue}, escapeinside=..]
+ ------ ----- ----- ----------------
+|  op  |  rs |  rt |encoded address |
+ ------ ----- ----- ----------------
+   6      5     5         16
+\end{lstlisting}
+The target of the encoded addres is
+\[\text{Target} = 4(\text{encoded address}) + \texttt{PC} + 4.\]
+That is, branch instructions are word addressed ($4(\text{encoded address})$), and relative to the next instruction ($\texttt{PC} + 4$).
 
-
-
+\subsubsection{Jump Addressing}
+Jump instructions are J-type instructions:
+\begin{lstlisting}[style=CStyle, numbers=none, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, numberstyle=\color{blue}, escapeinside=..]
+ ------ --------------------------
+|  op  |      encoded address     |
+ ------ --------------------------
+   6               26
+\end{lstlisting}
+In this case the lower $28$ bits of the address to be jumped to are
+\[4 \cdot \text{encoded address}\]
+and the upper four are that of the \texttt{PC}.  If you need to jump to a really far away address (more than 64 million instructions away), then you use jump register instruction (\texttt{jr}).
 
 
 \end{document}
