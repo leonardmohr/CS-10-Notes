@@ -576,6 +576,307 @@ j    True
 \end{lstlisting}
 This shortcut is really helpful if we want to check if some index is out of bounds for a given array.  For example, let's say we have an array \texttt{example} whose upper bounds $y$.  Then we could use the code above to check if some index $i$ is in bounds ($0 \leq x < y$).
 
+\subsection{Supporting Procedures in Computer Hardware}\label{subsec:}
+Thus far, we have only really learned how to perform a sequence of instructions, but what if we want to perform that same sequence of instructions a lot of times, and maybe we want to act upon some variables.  In C we have functions, and in assembly, we have \textbf{procedures}.
+\begin{marginfigure}
+  A \textbf{procedure} is a stored subroutine that performs a specific task based on the parameters with which it is provided.
+\end{marginfigure}%
+To perform a procedure in MIPS, we follow the follwoing steps:
+  \begin{enumerate}
+  \item Put parameters in a place where the procedure can access them.
+\item Transfer control to the procedure.
+\item Acquire the storage resources needed for the procedure.
+\item Perform the desired task.
+\item Put the result value in a place where the calling program can access it.
+\item Return control to the point of origin, since a procedure can be called from several points in a program.
+\end{enumerate}
+The following registers are used for procedure calling
+\begin{itemize}
+\item \texttt{\$a0-\$a3}: four argument registers in which to pass parameters
+\item \texttt{\$v0-\$v1}: two value registers in which to return values
+\item \texttt{\$ra}: one return address register to return to the point of origin 
+\end{itemize}
+The return address register is populated by the \textbf{jump-and-link-instruction} (jal):\\
+
+\texttt{jal ProcedureAddress}. 
+This instruction simultaneously jumps to ProcedureAddress, and populates the return address register (\texttt{\$ra}) with the address of the following instruction.  This way the computer knows what to perform once the procedure is finished.
+\begin{marginfigure}
+The \textbf{return address} is a link to the calling site that allows a procedure to return to the proper address; in MIPS it is stored in regeister \texttt{\$ra}. 
+\end{marginfigure}%
+
+The \textbf{caller} is the one that puts the parameter values in \texttt{\$a0-\$a3} and uses \texttt{jal X} to jump to procedure \texttt{X} (\textbf{callee}).  Once the callee has finished, it places the results in \texttt{\$v0} and \texttt{\$v1}, and then returns control to the caller using \texttt{jr \$ra}.  This is an unconditional jump to the address specified in a register.
+
+To make all of this work, we need to store the address of the current instruction being executed.  We do this in a register called the \textbf{program counter} (PC). The \texttt{jal} instruction saves PC + 4 in register \texttt{\$ra}.
+
+\subsubsection{Nested Procedures}
+Let's say you have the following program:
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+#include <stdio.h>
+
+int fact(int n)
+{
+    if (n < 1)
+        return 1;
+    else
+        return (n * fact(n-1));
+}
+
+int main() {
+    int result = fact(3);
+    printf("%d\n", result);
+    return 0;
+}
+\end{lstlisting}
+Because \texttt{fact(n)} can call itself, you have to be careful about saving the return address register (\texttt{\$ra}), as well as any other registers that may be used (more info below).  We can write the above program in MIPS as follows:
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+main:
+  addi    $a0, $zero, 3
+  jal     fact
+  add     $a0, $v0, $zero # store result for printing
+  addi    $v0, $zero, 1   # print int syscall
+  syscall
+  addi    $v0, $zero, $10 # exit syscall
+  syscall
+  
+fact:
+  addi    $sp, $sp, -8    # make space for two items on stack
+  sw      $ra, 4($sp)     # save return address
+  sw      $a0, 0($sp)     # save arg n
+  slti    $t0, $a0, 1     # test if n < 1
+  beq     $t0, $zero, L1  # if n >= 1, goto L1
+  lw      $ra, 4($sp)     # restore $ra
+  lw      $a0, 0($sp)     # restore arg n
+  addi    $v0, $zero, 1   # return 1
+  addi    $sp, $sp, 8     # pop two items from stack
+  jr      $ra             # return to caller
+
+L1:
+  addi    $a0, $a0, -1    # n += -1
+  jal     fact            # calls fact and $ra <-- PC+4
+  lw      $a0, 0($sp)     # restore arg n
+  lw      $ra, 4($sp)     # restore $ra
+  addi    $sp, $sp, 8     # Pops two items from stack
+  mul     $v0, $a0, $v0   # return n*fact(n-1)
+  jr      $ra             # return to caller
+\end{lstlisting}
+Let's look at how the register values, and stack changes as we go through the program:
+\begin{enumerate}
+\item In \texttt{main} (before first call of fact):
+  \begin{lstlisting}[style=CStyle, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, escapeinside=..]
+$a0 <--- 3
+$ra <--- return to main
+\end{lstlisting}
+  
+\item During first call of \texttt{fact(3)}
+  \begin{lstlisting}[style=CStyle,  xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, escapeinside=..]
+                             Stack
+                         --------------
+                        |  ra of main  |
+                         --------------  <--- -4
+                        |      3       |
+                         --------------  <--- -8
+\end{lstlisting}
+\pagebreak
+\item First break to \texttt{L1}:
+\begin{lstlisting}[style=CStyle, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, escapeinside=..]
+$a0 <-- 3-1 = 2              Stack
+$ra <-- return to L1     --------------
+                        |  ra of main  |
+                         --------------  <--- -4
+                        |      3       |
+                         --------------  <--- -8
+\end{lstlisting}
+
+\item During second call to \texttt{fact(2)}
+\begin{lstlisting}[style=CStyle, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, escapeinside=..]
+$a0 = 3-1 = 2                Stack
+$ra = return to L1       --------------
+                        |  ra of main  |
+                         --------------  <--- -4
+                        |      3       |
+                         --------------  <--- -8
+                        |   ra of L1   |
+                         --------------  <--- -12
+                        |      2       |
+                         --------------  <--- -16
+\end{lstlisting}
+
+\item During second break to \texttt{L1}
+\begin{lstlisting}[style=CStyle, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, escapeinside=..]
+$a0 <--- 2-1 = 1             Stack
+$ra <--- return to L1    --------------
+                        |  ra of main  |
+                         --------------  <--- -4
+                        |      3       |
+                         --------------  <--- -8
+                        |   ra of L1   |
+                         --------------  <--- -12
+                        |      2       |
+                         --------------  <--- -16
+\end{lstlisting}
+
+\item During third call to \texttt{fact(1)}
+\begin{lstlisting}[style=CStyle, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, escapeinside=..]
+$a0 = 1                Stack
+$ra = return to L1       --------------
+                        |  ra of main  |
+                         --------------  <--- -4
+                        |      3       |
+                         --------------  <--- -8
+                        |   ra of L1   |
+                         --------------  <--- -12
+                        |      2       |
+                         --------------  <--- -16
+                        |   ra of L1   |
+                         --------------  <--- -20
+                        |      1       |
+                         --------------  <--- -24
+\end{lstlisting}
+
+\item During third break to \texttt{L1}
+\begin{lstlisting}[style=CStyle, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, escapeinside=..]
+$a0 <--- 1-1 = 0             Stack
+$ra <--- L1              --------------
+                        |  ra of main  |
+                         --------------  <--- -4
+                        |      3       |
+                         --------------  <--- -8
+                        |   ra of L1   |
+                         --------------  <--- -12
+                        |      2       |
+                         --------------  <--- -16
+                        |   ra of L1   |
+                         --------------  <--- -20
+                        |      1       |
+                         --------------  <--- -24
+\end{lstlisting}
+
+\item During fourth call to \texttt{fact(0)} 
+\begin{lstlisting}[style=CStyle, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, escapeinside=..]
+$a0 = 0                      Stack
+$ra = L1                 --------------
+                        |  ra of main  |
+$ra <-- stack[-28] = L1  --------------  <--- -4
+$a0 <-- stack[-32] = 0  |      3       |
+$v0 <-- 1 * 1 = 1        --------------  <--- -8
+                        |   ra of L1   |
+                         --------------  <--- -12
+                        |      2       |
+                         --------------  <--- -16
+                        |   ra of L1   |
+                         --------------  <--- -20
+                        |      1       |
+                         --------------  <--- -24
+                        |   ra of L1   |
+                         --------------  <--- -28
+                        |      0       |
+                         --------------  <--- -32$
+\end{lstlisting}
+\pagebreak
+\item Backtracking to 3rd \texttt{L1}: 
+\begin{lstlisting}[style=CStyle, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, escapeinside=..]
+$ra <-- stack[-20] = L1      Stack
+$a0 <-- stack[-24] = 1   --------------
+$v0 <-- 1 * 1 = 1       |  ra of main  |
+                         --------------  <--- -4
+                        |      3       |
+                         --------------  <--- -8
+                        |   ra of L1   |
+                         --------------  <--- -12
+                        |      2       |
+                         --------------  <--- -16
+                        |   ra of L1   |
+                         --------------  <--- -20
+                        |      1       |
+                         --------------  <--- -24$
+\end{lstlisting}
+
+  \item Backtracking to 2nd \texttt{L1}: 
+\begin{lstlisting}[style=CStyle, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, escapeinside=..]
+$ra <-- stack[-12] = L1      Stack
+$a0 <-- stack[-16] = 2   --------------
+$v0 <-- 1 * 2 = 2       |  ra of main  |
+                         --------------  <--- -4
+                        |      3       |
+                         --------------  <--- -8
+                        |   ra of L1   |
+                         --------------  <--- -12
+                        |      2       |
+                         --------------  <--- -16$
+\end{lstlisting}
+
+  \item Backtracking to 1st \texttt{L1}: 
+\begin{lstlisting}[style=CStyle, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, escapeinside=..]
+$ra <-- stack[-4] = main     Stack
+$a0 <-- stack[-8] = 3    --------------
+$v0 <-- 2 * 3 = 6       |  ra of main  |
+                         --------------  <--- -4
+                        |      3       |
+                         --------------  <--- -8$
+\end{lstlisting}
+
+  \item Back in main
+\begin{lstlisting}[style=CStyle, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, escapeinside=||]
+$a0 <-- 6
+$v0 <-- 1
+Print 1
+Exit
+\end{lstlisting}
+\end{enumerate}
+If you examine things closely, you can actually forgoe the restoring of \texttt{\$ra} and \texttt{\$a0} inside of fact, since those remain unchanged.
+\begin{marginfigure}
+\includegraphics[width=\linewidth]{16.png}
+  \caption{How the memory is split up.}
+\end{marginfigure}%
+
+\subsubsection{Calling Conventions}
+
+\textbf{Rules for all calls}
+\begin{itemize}
+\item The first instruction in the function manipulates \texttt{\$sp} to allocate $F$ words of stack:
+  \[\texttt{addi \$sp, \$sp, -F*4}\]
+  where $F = A + L + P + (1 \text{ for } \texttt{\$ra} \text{ if needed }) + (1 \text{ for } \texttt{\$fp} \text{ if in use }) + (2 \text{ for } \texttt{\$gp}) + \text{ padding }$. Also, $F$ is the frame size in words, and should be even.\\
+  Corollary 1: \texttt{\$sp} is not changed at any other point than the first and last instructions in the function.
+\begin{marginfigure}
+  \begin{center}
+    \includegraphics[width=\linewidth]{17.png}
+  \end{center}
+  \caption{Stack organization during call}
+\end{marginfigure}%
+\item If you want to use any preserved register in any place during the function, you must store them into the stack when you \textbf{enter} the function (not when you use it). Let's assume we are saving \texttt{\$s0}, \texttt{\$s1}, and \texttt{\$s2} registers, as well as \texttt{\$ra} and \texttt{\$sp}. Then we would write:
+\begin{lstlisting}[style=CStyle, numbers=none, xleftmargin=5.0ex, aboveskip=1em, belowskip=1em, numberstyle=\color{blue}, escapeinside=||]
+sw $ra, (F-1)*4($sp)   # Not needed for leaf functions
+sw $fp, (F-2)*4($sp)
+sw $s2, (F-3)*4($sp)
+sw $s1, (F-4)*4($sp)
+sw $s0, (F-1)*4($sp)
+\end{lstlisting}
+\item After saving preserved registers, copy \texttt{\$sp} into \texttt{\$fp}, so that from now until you start returning, you can use offsets from \texttt{\$fp} to access the locations.  Save and restore local variables as needed after this point, using \texttt{\$fp} and the spots already allocated for them on the stack.
+\item You may pass information \textbf{into} a function only through \texttt{\$a0-\$a3} and extra stack arguments.  As the called function, you may not use the value held in any other register except \texttt{\$sp}, \texttt{\$fp}, \texttt{\$gp} and \texttt{\$ra} (i.e. don't try and use \texttt{\$v0} or \texttt{\$s0}).  The $#4$ (fifth) argument to the current function is available at $(F+4)*4(\texttt{\$fp})$.  You may store argument $0$ from \texttt{\$a0} into its reserved spot at $F*4(\$fp)$, arg1 into $(F+1)*4(\texttt{\$fp})$, etc., if you want.
+
+\item You may pass information \textbf{out of} a function through only \texttt{\$v0-\$v1}.
+\item You may only enter a function at its beginning.  You may not \texttt{jal} into the middle of a function.
+\item You may have only one \texttt{jr \$ra} in each function. It is the last instruction in the function, following the instructions that restore the registers saved.   
+\end{itemize}
+
+\textbf{Extra rules for non-leaf functions}:
+\begin{itemize}
+\item Look at the declarations for all procedures this function \textit{might} call. Find the one with the largest number of arguments, $A$, and then make $A$ at least $4$.  You must allocate $A \cdot 4$ bytes on the stack upon entry into your function.
+\item If passing more than $4$ arguments, then place $4$ arguments into \texttt{\$a0-\$a3}.  Every argument past the $4^{\text{th}}$ argument is placed on the stack.  For example suppose $6$ arguments are in \texttt{\$s0-\$s5}:
+\begin{lstlisting}[style=CStyle, numbers=none, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+move $a0, $s0    # 0($fp) reserved on the stack
+move $a1, $s1    # 4($fp) reserved on the stack
+move $a2, $s2    # 8($fp) reserved on the stack
+move $a3, $s3    # 12($fp) reserved on the stack
+sw $s4, 16($fp)  # 5th arg in the stack. Always here!
+sw $s5, 20($fp)  # 5th arg in the stack. Always here!
+\end{lstlisting}
+\item You must preserve register \texttt{\$ra} because a called-function \texttt{jal} destroys the value, and it is a preserved register. 
+\end{itemize}
+
+
+
+
 
 \end{document}
       
