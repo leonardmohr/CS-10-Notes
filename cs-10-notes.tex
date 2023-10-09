@@ -916,6 +916,42 @@ Jump instructions are J-type instructions:
 In this case the lower $28$ bits of the address to be jumped to are
 \[4 \cdot \text{encoded address}\]
 and the upper four are that of the \texttt{PC}.  If you need to jump to a really far away address (more than 64 million instructions away), then you use jump register instruction (\texttt{jr}).
+\addtocounter{subsection}{1}
+\subsection{Translating and Starting a Program}\label{subsec:}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=8cm]{18.png}
+  \caption{The four steps that go into loading your C program into memory.}
+  \label{fig:}
+\end{figure}
+\subsubsection{Compiler}
+The compiler transforms the C program into an assembly language program.
+
+\subsubsection{Assembler}
+The main job of the assembler is to convert assembly language into binary machine code (object file). The assembler must determine the addresses associated with labels, which it keeps track of in a symbol table which contains pairs of symbols and addresses.  The object for UNIX systems typically contains six distinct pieces:
+\begin{itemize}
+\item The \textit{object file header} describes the size and position of the other pieces of the object file.
+\item The \textit{text segment} contains the machine language code.
+\item The \textit{static data segment} contains data allocated for the life of the program. (UNIX allows programs to use both static data, which is allocated throughout the program, and dynamic data, which can grow or shrink as needed by the program.)
+\item \textit{The relocation information} identifies instructions and data words that depend on absolute addresses when the program is loaded into memory.
+\item The \textit{symbol table} contains the remaining labels that are not defined, such as external references.
+\item The \textit{debugging information} contains concise descriptions of how the modules were compiled so that a debugger can associate machine instructions with C source files and make data structures readable.
+\end{itemize}
+\subsubsection{Linker}
+The linker or link editor is a systems program that combines independently assembled machine language programs and resolves all undefined labels into an executable file.  In this way, you can combine your program with other progras (such as header files or libraries) without having to recompile everything together.
+\subsubsection{Loader}
+The loader places an object program in main memory so that it is ready to execute.  The loader follows the following steps in UNIX systems:
+\begin{enumerate}
+\item Reads the executable file header to determine size of the text and data segments.
+\item Creates an address space large enough for the text and data.
+\item Copies the instructions and data from the executable file into memory.
+\item Copies the parameters (if any) to the main program onto the stack.
+\item Initializes the machine registers and sets the stack pointer to the first free location.
+\item Jumps to a start-up routine that copies the parameters into the argument registers and calls the main routine of the program. When the main routine returns, the start-up routine terminates the program with an \texttt{exit} system call.
+\end{enumerate}
+
+\addtocounter{subsection}{1}
+\subsection{Arrays versus Pointers}\label{subsec:}
 
 
 \end{document}
