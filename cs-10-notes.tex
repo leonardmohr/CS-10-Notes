@@ -1,13 +1,16 @@
+
 \documentclass[10pt]{article}
 \usepackage{NotesTeXV3,lipsum}
 \usepackage{cancel}
 \usepackage{pgfplots}
 \usepackage{esint}
 \usepackage{listings}
+\usepackage[table]{xcolor}% http://ctan.org/pkg/xcolor
 \usetikzlibrary{shadows}
 \usetikzlibrary{shapes}
 \usetikzlibrary{decorations}
-\usetikzlibrary{arrows,decorations.markings} 
+\usetikzlibrary{arrows,decorations.markings}
+\usetikzlibrary{arrows,shapes.gates.logic.US,shapes.gates.logic.IEC,calc}
 \pgfplotsset{compat=newest}
 \usepgfplotslibrary{colormaps}
 % \usepackage{showframe}
@@ -17,6 +20,79 @@
 \DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
 \newcommand{\vectorproj}[2][]{\text{proj}_{\vect{#1}}\vect{#2}}
 \newcommand{\vect}{\mathbf}
+\usepackage{circuitikz}
+\usepackage{longdivision}
+
+% The following are to allow Multiplication, addition and long division written out.
+% See https://tex.stackexchange.com/questions/169842/how-to-make-a-multiply-equation
+\usepackage{array}
+
+\makeatletter
+\pgfdeclareshape{custom multiplexer}{
+  \expandafter\pgfutil@g@addto@macro\csname pgf@sh@s@custom multiplexer\endcsname{%
+    % Adjust the height based on the number of inputs
+    \pgfmathsetmacro{\muxheight}{\pgfkeysvalueof{/pgf/minimum height} - (\pgfkeysvalueof{/pgf/inner ysep} * 2)}
+    \pgfpathrectanglecorners{\pgfpoint{-0.5\wd\pgfnodeparttextbox}{-0.5\muxheight}}{\pgfpoint{0.5\wd\pgfnodeparttextbox}{0.5\muxheight}}
+  }
+}
+
+    \providecommand\text\mbox
+    \newenvironment{arithmetic}[1][]{\begin{tabular}[#1]{Al}}{\end{tabular}}
+    \newcolumntype{A}{>{\bgroup\def~{\phantom{0}}$\@testOptor}r<{\@gobble\\$\egroup}}
+
+\def\@testOptor\ignorespaces#1#2\\{%
+    \ifx#1\times
+        \@OperatorRow{#1}{#2}\@tempa%
+    \else\ifx#1+
+        \@OperatorRow+{#2}\@tempa%
+    \else\ifx#1\discretionary% detects the soft hyphen, \-
+        \@ShortSubtractRow{#2}\@tempa%
+    \else\ifx#1-
+        \@OperatorRow-{#2}\@tempa%
+    \else
+        \@NormalRow{#1#2}\@tempa%
+    \fi\fi\fi\fi
+    \@tempa}
+
+\def\@OperatorRow#1#2#3{%
+    \@IfEndRow#2\@gobble\\{%
+        \def#3{\underline{{}#1 #2}\\}%
+    }{%
+        \def#3{\underline{{}#1 #2{}}}%
+    }}
+
+\def\@NormalRow#1#2{%
+    \@IfEndRow#1\@gobble\\{%
+        \def#2{#1\\}%
+    }{%
+        \def#2{#1{}}%
+    }}
+
+\def\@IfEndRow#1\@gobble#2\\#3#4{%
+    \ifx#2\@gobble
+        #4%
+    \else
+        #3%
+    \fi}
+
+  \makeatother
+
+\def\@ShortSubtractRow#1#2{\@@ShortSubtractRow#1~\end{#2}}
+\def\@@ShortSubtractRow#1#2~#3\end#4{%
+    \@IfEndRow#3\@gobble\\{%
+        \def#4{\underline{\text{--} #2}#3\\}%
+    }{%
+        \def#4{\underline{\text{--} #2{}}#3}%
+      }}
+
+\def\Into#1\\{%
+    \@IfEndRow#1\@gobble\\{%
+        \def\@tempa{~\raisebox{0.17ex}{\parbox{0.15em}{\centering$\big|$}}\overline{~\big.#1}\\}%
+    }{%
+        \def\@tempa{~\raisebox{0.17ex}{\parbox{0.15em}{\centering$\big|$}}\overline{~\big.#1{}}}%
+      }\@tempa}
+
+\usepackage{colortbl}
 
 \begin{document}
 	\title{{CS10 -- Computer Architecture and Organization}\\{\normalsize{\itshape My Notes}}}
@@ -187,7 +263,7 @@ When talking about computers, we often want to look at the performance of the co
 For the time being, we will mostly be looking at response time.  So that a higher number represents a machine with better performance we will say that
 \[\text { Performance }_{\mathrm{X}}=\frac{1}{\text { Execution time }_{\mathrm{X}}}.\]
 Also, we often want to say that computer ``X is $n$ times as fast as Y'', to compute $n$ we say:
-\[\frac{\text { Performance }_{\mathrm{X}}}{\text { Performance }_{\mathrm{Y}}}=n.\]
+\[\frac{\text { Performance }_{\mathrm{X}}}{\text { Performance }_{\mathrm{Y}}} = \frac{\text{Execution Time}_Y }{\text{Execution Time}_X }=n.\]
 \begin{marginfigure}
 \textbf{CPU execution time} or simply \textbf{CPU time} is the actual time the CPU spends computing for a specific task.
 \end{marginfigure}%
@@ -849,7 +925,7 @@ sw $ra, (F-1)*4($sp)   # Not needed for leaf functions
 sw $fp, (F-2)*4($sp)
 sw $s2, (F-3)*4($sp)
 sw $s1, (F-4)*4($sp)
-sw $s0, (F-1)*4($sp)
+sw $s0, (F-5)*4($sp)
 \end{lstlisting}
 \item After saving preserved registers, copy \texttt{\$sp} into \texttt{\$fp}, so that from now until you start returning, you can use offsets from \texttt{\$fp} to access the locations.  Save and restore local variables as needed after this point, using \texttt{\$fp} and the spots already allocated for them on the stack.
 \item You may pass information \textbf{into} a function only through \texttt{\$a0-\$a3} and extra stack arguments.  As the called function, you may not use the value held in any other register except \texttt{\$sp}, \texttt{\$fp}, \texttt{\$gp} and \texttt{\$ra} (i.e. don't try and use \texttt{\$v0} or \texttt{\$s0}).  The $#4$ (fifth) argument to the current function is available at $(F+4)*4(\texttt{\$fp})$.  You may store argument $0$ from \texttt{\$a0} into its reserved spot at $F*4(\$fp)$, arg1 into $(F+1)*4(\texttt{\$fp})$, etc., if you want.
@@ -952,6 +1028,613 @@ The loader places an object program in main memory so that it is ready to execut
 
 \addtocounter{subsection}{1}
 \subsection{Arrays versus Pointers}\label{subsec:}
+Let's look at two ways we can set an array to all zeros: one using pointers, and one using arrays, so that we get an idea for how C pointers work.
+
+\subsubsection{Array}
+Let's say that we have the following C code:
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=||]
+clear1(int array[], int size)
+{
+    int i;
+    for (i = 0; i < size; i +=1)
+        array[i] = 0;
+}
+\end{lstlisting}
+Then we would have the following MIPS code:
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=2em, belowskip=2em, numberstyle=\color{blue}, escapeinside=..]
+  addiu  $sp, $sp, $-16       # Space for four arguments
+  addi   $sp, $sp, $-32       # Space for array of 8 words
+  addi   $sp, $sp, $-4        # Space for $gp
+  addi   $sp  $sp, $-4        # space for $fp
+  addi   $sp  $sp  $-4        # Space for $ra
+
+F = 4(arguments) + 8(local data) + 1(ra) + 1(fp) + 2(gp)
+  = 16
+Stack
+ ------------
+|     ra     |
+ ------------ <--- +60
+|     fp     |
+ ------------ <--- +56
+|  array[7]  |
+ ------------ <--- +52
+|  array[6]  |
+ ------------ <--- +48
+|  array[5]  |
+ ------------ <--- +44
+|  array[4]  |
+ ------------ <--- +40
+|  array[3]  |
+ ------------ <--- +36
+|  array[2]  |
+ ------------ <--- +32
+|  array[1]  |
+ ------------ <--- +28
+|  array[0]  |
+ ------------ <--- +24
+|            |
+ ------------ <--- +20
+|     gp     |
+ ------------ <--- +16
+| arg 3 spce |
+ ------------ <--- +12
+| arg 2 spce |
+ ------------ <--- +8
+| arg 1 spce |
+ ------------ <--- +4
+| arg 0 spce |
+ ------------ <--- +0
+
+main:
+  addiu  $sp, $sp, -64        # Allocate stack space
+  sw     $ra, 60($sp)         # Save return address
+  sw     $fp, 56($sp)         # Save frame pointer
+  sw     $gp, 16($sp)         # Save global pointer
+  add    $fp, $sp, $zero      # Estabilish frame pointer
+  addiu  $a0, $fp, 24         # arg0 <--- &array[0]
+  addiu  $a1, $zero, 8        # arg1 <--- size = 8
+  jal    clear1               # clear1(&array, 8)
+  ...
+  j      exit
+
+clear1:
+  add    $t0, $zero, $zero    # i <-- 0
+  slti   $t3, $a1,   1        # $t3 <-- 1 if size < 1
+  bne    $t3, $zero, exit     # if (size < 1) exit
+
+loop:
+  sll    $t1, $t0, 2          # $t1 <-- i * 4
+  add    $t2, $a0, $t1        # $t2 <-- mem address of array[i]
+  sw     $zero, 0($t2)        # array[i] <-- 0
+  addi   $t0, $t0, 1          # i += 1
+  slt    $t3, $t0, $a1        # $t3 <-- i, if i < size
+  bne    $t3, $zero, Loop     # goto loop if i
+
+exit:
+\end{lstlisting}
+\begin{marginfigure}
+Note that this code only works if \texttt{size > 0}; ANSI C requires a test of size before the loop, but we'll skip that legality here.  
+\end{marginfigure}%
+\section{Arithmetic for Computers}
+\addtocounter{subsection}{1}
+\subsection{Addition and Subtraction}\label{subsec:}
+Addition in binary works just like addition in decimal, going bit by bit, and carrying over:
+\begin{lstlisting}[style=CStyle, numbers=none, xleftmargin=5.0ex, aboveskip=0.5em, belowskip=0.5em, numberstyle=\color{blue}, escapeinside=||]
+  10_{10} = 01010_2
++  6_{10} = 00110_2
+  ----------------
+  16_{10} = 10000_{2}
+\end{lstlisting}
+Subtraction can either be done via the subtract operation, or by adding a negative number (in two's complement):
+\begin{center}
+\includegraphics[width=9cm]{19.png}
+\end{center}
+\subsubsection{Overflow Twos Complement}
+\textbf{Addition}
+\begin{itemize}
+\item Cannot occur when adding operands with different signs. This is because the sum can be no larger than one of the numbers, and both numbers fit.
+\item Overflow can be detected when adding numbers of the same sign but the sign bit changes.
+\end{itemize}
+\textbf{Subtraction}
+\begin{itemize}
+\item Cannot occur when signs are the same $(a - b = a + (-b))$.
+\item Overflow occurs when we subtract a negative number from a positive number but get a negative number $(a- (-b) = -x)$
+\end{itemize}
+
+\subsubsection{Unsigned Overflow}
+Depending upon the situtation, one may or may not want an exception to be thrown when overflow occurs.  For this reason there are there are two types of integer opporations.
+\begin{itemize}
+\item \texttt{add}, \texttt{addi}, and \texttt{sub} cause exceptions on overflow.
+\item \texttt{addu}, \texttt{addiu}, and \texttt{subu} do not cause exceptions on overflow.  
+\end{itemize}
+Note that C ignores overflows, and so MIPS compilers will always generate the unsigned versions.
+\begin{marginfigure}
+Note that allthough \texttt{addiu} is unsigned addition, the $16$-bit immediate field is sign extended to $32$-bits and so the immediate field is signed, even if the operation is ``unsigned''. 
+\end{marginfigure}%
+  \begin{center}
+    \includegraphics[width=10cm]{20.png}
+  \end{center}
+  \caption{Because MIPS does not have a conditional branch to test overflow, a sequence of MIPS instructions can discover overflow.}
+
+
+\subsection{Multiplication}\label{subsec:}
+Let's say we want to multiply $1011 \times 0101$, then we would perform the following steps:
+\begin{center}
+\begin{arithmetic}
+           1011 &   \textit{\textcolor{blue}{Multiplicand}}    \\
+    \times 0101 &   \textit{\textcolor{blue}{Multiplier}}   \\
+           1011 &   \\
+          0000~ &   \\
+         1011~~ \\
+  +     0000~~~ \\
+       00110111 & \textit{\textcolor{blue}{Product}}
+\end{arithmetic}
+\end{center}
+Notice that we just add copies of the multiplicand (shifted over by 1 each time), or zero (depending upon bit of multiplier).  Thus, to perform multiplaction, we will need the following pieces of hardware:
+\begin{itemize}
+\item A multiplicand register. Because we are shifting over the multiplicand each time, it needs to be twice as big (so $64$-bits).
+\item A multiplier register. Size of $32$-bits.
+\item A product register.  Needs to be $64$ bits wide.
+\item An Arithmetic Logic Unit (ALU) to perform the addition of product and multiplicand registers.
+\item A control test that in each cycle tells:
+  \begin{itemize}
+\item the ALU to sum the multiplicand and product (if control says to)
+\item the multiplicand to shift left,
+\item the multiplier to shift right, 
+\item the product register to change or not depending upon the lsb if the multiplier register.
+\end{itemize}
+\end{itemize}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=9cm]{21.png}
+  \caption{A simple version of multiplication hardware.}
+  \label{fig:}
+\end{figure}
+So what will the first cycle of hardware look like?
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=9cm]{23.png}
+  \caption{So at first, the product register is set to $0000$, the multiplicand register is set to $1011$, and the multiplier register is set to $0101$. The control test tests the first bit of the multiplicand (1), and so tells the ALU to sum the product and multiplicand registers, and store the value in the product register.  The control then shifts the multiplicand 1 bit to the left, and the multiplier 1 bit to the right.}
+  \label{fig:}
+\end{figure}
+\begin{marginfigure}
+  \begin{center}
+    \includegraphics[width=\linewidth]{22.png}
+  \end{center}
+  \caption{The multiplication algorithm.}
+\end{marginfigure}%
+
+\subsubsection{Faster Multiplication}
+\textbf{Parallel Processing Speedup}
+\begin{itemize}
+\item The multiplier and multiplicand are shifted while the multicland is added to the product if the multiplier bit is a 1.
+\item The hardware just has to ensure that it tests the right bit of the multiplier and gets the preshifted version of the multiplicand.
+\end{itemize}
+\textbf{Resource Optimization Speedup}
+If you look back at doing the multiplication by hand, you may notice that at each step you are really only adding four bits at once.  What we will do now, is have a 32-bit multiplicand register, a 32-bit adder, and a 64-bit product, and shift the product register instead of the multiplicand register.  Let's se how this works in practice.
+\begin{itemize}
+\item \textbf{Step 1}\\
+  \begin{aligned}
+    \text{Multiplicand: }&1011\\
+    \text{Multiplier: }&0101\\
+    \text{Product: }&1011 \; 0000 
+  \end{aligned}
+
+  \item \textbf{Step 2}\\
+  \begin{aligned}
+    \text{Multiplicand: }&1011\\
+    \text{Multiplier: }&0101\\
+    \text{Product: }&0101 \; 1000 
+  \end{aligned}
+
+  \item \textbf{Step 3}\\
+  \begin{aligned}
+    \text{Multiplicand: }&1011\\
+    \text{Multiplier: }&0101\\
+    \text{Product: }&1101 \; 1100
+  \end{aligned}
+  \item \textbf{Step 4}\\
+  \begin{aligned}
+    \text{Multiplicand: }&1011\\
+    \text{Multiplier: }&0101\\
+    \text{Product: }&0110 \; 1 110
+  \end{aligned}\\
+The last shift will then set the product as $0011 \; 0111$.
+\end{itemize}
+\begin{marginfigure}
+  \begin{center}
+    \includegraphics[width=\linewidth]{24.png}
+  \end{center}
+  \caption{The faster multiplication hardware, taking advantage of parallel processing as well as reduced register size}
+\end{marginfigure}%
+
+\subsubsection{Even Faster Multiplication}
+
+\subsection{Division}\label{subsec:}
+Let's first examine a little bit more closely the long division from elementary school:
+\[\intlongdivision{1001010}{1000}.\]
+Notice how as we are testing to see the divisor is less than the $n$ MSBs of the dividend  where $n$ increases by 1 each cycle.  If the divisor is less than, we subtract the divisor from the dividend and put 1 in the quotient.
+
+So how does all of this transfer over to hardware?
+\begin{itemize}
+\item Well, so that we are comparing divisor to the MSBs of the divident we will store the 32-bit divisor in a 64-bit integer, but start with it in the 32 MSBs.  This way, after each cycle we just shift the divisor to the right one.
+\item Because we keep subtracting from the dividend, we just make our life simple and start the dividend as the remainder.
+\item Instead of placing the $1$ or $0$ of the quotient starting from the LSB, we place start with the quotient as zero and shift the quotient left $1$ and set LSB to 1 if applicable.  This way at the end this will get shifted over to become the MSB.
+\end{itemize}
+\begin{marginfigure}
+  \begin{center}
+    \includegraphics[width=\linewidth]{37.png}
+  \end{center}
+  \caption{Hardware implementation of division}
+\end{marginfigure}%
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=7cm]{36.png}
+  \caption{The division algorithm that we will implement in hardware.}
+  \label{fig:}
+\end{figure}
+
+\subsubsection{Faster Division}
+We can make this a little bit more efficient. Instead of shifting the divisor right, we can shift the remainder/quotient left.  So we start with the quotient in the 32 LSBs, shift the remainder left one cycle and compare the 32 MSBs of the remainder with the divisor (we want the divisor to be less than the upper 32 MSBs of the quotient/remainder).  In this way we now only need a 32 bit ALU. 
+
+At the end of this you may notice that the 32 LSBs of the quotient/remainder are all zeros.  To utilize this space we will use this as the spot for the remainder to go, saving us an extra 32 bits.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=7cm]{38.png}
+  \caption{The faster division hardware}
+  \label{fig:}
+\end{figure}
+
+
+
+\section{Basics of Logic Design}
+For the most part we will be focusing on \textit{combinational logic}.  This is logic that has no memory (state) and therefore
+\[\text{ Same Input } \Leftrightarrow   \text{ Same Output }.\]
+\subsection{Truth Tables}\label{subsec:}
+Because of the above fact, a combinational block can be completely described by a truth table. In a logic block an input is either true or false.  Therefore, a logic block with $n$ inputs has $2^n$ possible different possibilities.
+
+Let's coonsider the logic function with inputs $(A,B)$ and outputs $(C,D,E)$ where:
+\begin{itemize}
+\item $C$ is true if no inputs are true,
+\item $D$ is true if at least on input is true, and
+\item $E$ is true if all inputs are true.
+\end{itemize}
+The truth table would be defined as follows
+\[
+\begin{tabular}{|c|c|c|c|c|}
+\hline \multicolumn{2}{|c|}{ Inputs } & \multicolumn{3}{c|}{ Outputs } \\
+\hline$A$ & $B$ & $C$ & $D$ & $E$ \\
+  \hline \cellcolor{red!25}0 & \cellcolor{red!25}0 &  \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{red!25}0 \\
+\hline \cellcolor{red!25}0 & \cellcolor{green!25}1 &  \cellcolor{red!25}0 & \cellcolor{green!25}1 & \cellcolor{green!25}1 \\
+\hline \cellcolor{green!25}1 & \cellcolor{red!25}0 &  \cellcolor{red!25}0 & \cellcolor{green!25}1 & \cellcolor{red!25}0 \\
+\hline \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{red!25}0 & \cellcolor{green!25}1 & \cellcolor{green!25}1 \\
+\hline
+\end{tabular}.
+\]
+Sometimes truth tables are hard to read, so we can express each output of the truth table as a boolean expression:
+\begin{align*}
+  C &= \bar{A} \cdot \bar{B}\\
+  D &= A + B\\
+  E &= A \cdot B.
+\end{align*}
+
+\subsection{Boolean Algebra}\label{subsec:}
+There are three elementary operators:
+\begin{itemize}
+\item logical OR: $A + B$,
+\item logical AND: $A \cdot B$, and 
+\item logical NOT: $\bar{A}$.
+\end{itemize}
+\subsubsection{Laws}
+\begin{align*}
+  \text{ Identity Laws: } A + 0 &= A\\
+  A \cdot 1 &= A\\
+  \text{ Zero and One Laws: } A + 1 &= 1\\
+  A \cdot 0 &= 0\\
+  \text{ Inverse Laws: } A + \bar{A} &= A\\
+  A \cdot \bar{A} &= 0\\
+  \text{ Commutative Laws: } A + B &= B + A\\
+  A \cdot B &= B \cdot A\\
+  \text{ Associative Laws: } A + (B + C) &= (A + B) + C\\
+  A \cdot (B \cdot C) &= (A \cdot B) \cdot C\\
+  \text{ Distributive Laws: } x \cdot(y + z)&=(x \cdot y) + (x \cdot z)\\
+  \text{ DeMorgan's Laws: } \overline{(A + B)} &\Leftrightarrow \bar{A} \cdot \bar{B}\\
+\overline{(A \cdot B)} &\Leftrightarrow \bar{A} + \bar{B}.
+\end{align*}
+\subsection{Logic Blocks}\label{subsec:}
+We can implement truth tables and boolean expressions with the use of three types of logic gates:
+\begin{align*}
+\begin{circuitikz} \draw
+  (0,0) node[and port] (and) {}
+      (and.in 1) node [anchor=east] {A}
+      (and.in 2) node [anchor=east] {B}
+    \end{circuitikz} &&
+\begin{circuitikz} \draw
+  (0,0) node[or port] (or) {}
+      (or.in 1) node [anchor=east] {A}
+      (or.in 2) node [anchor=east] {B}
+    \end{circuitikz} &&
+\begin{circuitikz} \draw
+  (0,0) node[not port] (not) {}
+      (not.in 1) node [anchor=east] {A}
+ \end{circuitikz}\\
+  \text{ AND gate} && \text{ OR gate } && \text{ NOT gate}  
+\end{align*}
+For example, we can build function $C = \bar{A} \cdot \bar{B}$ as follows:
+\begin{center}
+\begin{circuitikz} \draw
+  (0,0) node[not port] (not0) {}
+      (not0.in 1) node [anchor=east] {B}
+ (0,2) node[not port] (not1) {}
+ (not1.in 1) node [anchor=east] {A}
+ (2,1) node[and port] (and) {}
+ (not0.out) -- (and.in 2)
+ (not1.out) -- (and.in 1)
+  (and.out) -- ++(0,0) node[right] {C}
+    \end{circuitikz}
+  \end{center}
+  \subsubsection{Decoder}
+  A decoder is a logic block that has $n$-bit input and $2^n$ outputs, where only one output is asserted for each input combination.  For example:
+  
+\[
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline \multicolumn{2}{|c|}{ Inputs } & \multicolumn{4}{c|}{ Outputs } \\
+\hline$A$ & $B$ & $C$ & $D$ & $E$ & F\\
+ \hline \cellcolor{red!25}0 & \cellcolor{red!25}0 & \cellcolor{red!25}0 &  \cellcolor{red!25}0 & \cellcolor{red!25}0 & \cellcolor{green!25}1 \\
+\hline \cellcolor{red!25}0 & \cellcolor{green!25}1 & \cellcolor{red!25}0 &  \cellcolor{red!25}0 & \cellcolor{green!25}1 & \cellcolor{red!25}0 \\
+\hline \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{red!25}0 &  \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{red!25}0 \\
+\hline \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{red!25}0 & \cellcolor{red!25}0 \\
+\hline
+\end{tabular}.
+  \]
+  \begin{marginfigure}
+    \begin{center}
+      \includegraphics[width=\linewidth]{25.png}
+    \end{center}
+    \caption{A 3 bit decoder}
+  \end{marginfigure}%
+
+\subsubsection{Multiplexer}
+  A multiplexer is selects one of the given inputs based upon the select signal given. A multiplexer has three parts:
+  \begin{enumerate}
+  \item A decoder that generates $n$ signals (from $\log_2 n$ inputs), each indicating a different input value
+  \item An array of $n$ AND gates, each combining one of the inputs with a signal from the decoder
+  \item A signle large OR gate that incorporates the outputs of the AND gates.  
+  \end{enumerate}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=7cm]{26.png}
+  \caption{We can see either $A$ or $B$ is seleted based upon if the value of $S$ is $0$ or $1$.}
+  \label{fig:}
+\end{figure}
+  The truth table for the above MUX will be
+ \begin{center}
+\begin{tabular}{|c|c|c|}
+\hline index & $S$ & $C$ \\
+ \hline 0 & \cellcolor{red!25}0 & $A$ \\
+\hline 1 & \cellcolor{green!25}1 & $B$ \\
+\hline
+\end{tabular}, 
+ \end{center} 
+  and in boolean algebra:
+  \[C = (\bar{S} \cdot A) + (S \cdot B).\]
+
+\subsubsection{Two-Level Logic}
+  Any logic function can be written where every \textbf{input} is either true or a complemented variable and there are only two levels of gates:
+  \begin{itemize}
+  \item an AND level and
+  \item an or level.
+  \end{itemize}
+  There may be a possible inversion of the final output.  This is a lot to unpack, so let's look at an example.
+
+  Let's say we are given the following truth table for $D$:
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|}
+  \hline \multicolumn{3}{|c|}{ Inputs } & { Outputs } \\
+  \hline $A$ & $B$ & $C$ & $D$ \\
+  \hline \cellcolor{red!25}0 & \cellcolor{red!25}0 & \cellcolor{red!25}0 &  \cellcolor{red!25}0 \\
+  \hline \cellcolor{red!25}0 & \cellcolor{red!25}0 & \cellcolor{green!25}1 &  \cellcolor{green!25}1 \\
+  \hline \cellcolor{red!25}0 & \cellcolor{green!25}1 & \cellcolor{red!25}0 &  \cellcolor{green!25}1 \\
+  \hline \cellcolor{red!25}0 & \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{red!25}0 \\
+  \hline \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{red!25}0 &  \cellcolor{green!25}1 \\
+  \hline \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{green!25}1 &  \cellcolor{red!25}0 \\
+  \hline \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{red!25}0 &  \cellcolor{red!25}0 \\
+  \hline \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{green!25}1 \\
+  \hline
+\end{tabular}.
+\end{center}
+  Notice that there are four input combinations for which $D$ is true:
+  \begin{marginfigure}
+    A \textbf{product term} or a \textbf{minterm} is a set of logical inputs joined by conjunction (AND operations); the product terms for the first logic stage of the PLA.
+  \end{marginfigure}%
+\begin{itemize}
+\item $\bar{A} \cdot \bar{B} \cdot C$
+\item $\bar{A} \cdot B \cdot \bar{C}$
+\item $A \cdot \bar{B} \cdot \bar{C}$
+\item $A \cdot B \cdot C$
+\end{itemize}
+  We call each of these terms a \textbf{product term}.  For example the function $D$ can be implemented in hardware using two-level logic as follows:
+\begin{center}
+  \begin{circuitikz} \draw
+    (0,0) node[and port] (and1) {}
+    (0,2) node[and port] (and2) {}
+    (0,4) node[and port] (and3) {}
+    (0,6) node[and port] (and4) {}
+    (4,3) node[or port, number inputs=4] (or) {}
+    (and3.out) -- (or.in 2)
+    (and2.out) -- (or.in 3)
+    (and1.out) -- (or.in 4)
+    (and4.out) -- (or.in 1)
+    (or.out) -- ++(0,0) node[right] {D}
+  \end{circuitikz}
+\end{center}
+  \subsubsection{Programmable Logic Array}
+  When dealing with a set of logic functions (multiple inputs and multiple outputs) there will be an
+  \begin{itemize}
+  \item AND gate for each unique set of inputs for which there is at lest one corresponding true output
+  \item OR gate for each output function.
+  \end{itemize}
+  This way of structured-logic implementation is called a programmable logic array.  Let's say we have the following logic table:
+  \begin{center}
+\begin{tabular}{|c|c|c|c|c|c|}
+  \hline \multicolumn{3}{|c|}{ Inputs } & \multicolumn{3}{|c|}{ Outputs } \\
+  \hline $A$ & $B$ & $C$ & $D$ & $E$ & $F$\\
+  \hline \cellcolor{red!25}0   & \cellcolor{red!25}0   & \cellcolor{red!25}0   &  \cellcolor{red!25}0   & \cellcolor{red!25}0   & \cellcolor{red!25}0     \\
+  \hline \cellcolor{red!25}0   & \cellcolor{red!25}0   & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{red!25}0   & \cellcolor{red!25}0  \\
+  \hline \cellcolor{red!25}0   & \cellcolor{green!25}1 & \cellcolor{red!25}0   &  \cellcolor{green!25}1 & \cellcolor{red!25}0   & \cellcolor{red!25}0  \\
+  \hline \cellcolor{red!25}0   & \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{red!25}0  \\
+  \hline \cellcolor{green!25}1 & \cellcolor{red!25}0   & \cellcolor{red!25}0   &  \cellcolor{green!25}1 & \cellcolor{red!25}0   & \cellcolor{red!25}0  \\
+  \hline \cellcolor{green!25}1 & \cellcolor{red!25}0   & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{red!25}0  \\
+  \hline \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{red!25}0   &  \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{red!25}0  \\
+  \hline \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{red!25}0   & \cellcolor{green!25}1  \\
+  \hline
+\end{tabular}.
+\end{center}
+  Then the associated PLA that implements the logic function is:
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=9cm]{27.png}
+  \caption{Notice that only $7$ AND gates are required because no function is true for $A = B = C = 0$, and so we can ignore that. Also note that although there are three functions, there are only two OR gates because only combination of inputs for turns $F$ on.}
+    \label{fig:}
+  \end{figure}
+
+\subsubsection{Don't Cares}
+  Don't cares, as the name suggests, are values of an input, or values of an output for which we don't care what the value is; the value could be either $0$ or $1$ and the effect of the logic block would be unchanged.  
+  \begin{itemize}
+  \item Input Don't Cares: Arise when an output depends on only some of the inputs
+  \item Output Don't Cares: Arise when we don't care about the value of an output because another output is true.
+\end{itemize}
+    Don't cares are shown as X's on a truth table. They are important because they make it easeir to implement the optimization of a logic function. For example, consider the following logic functions:
+    \begin{itemize}
+    \item $D$ is true if $A$ or $C$ is true
+    \item $E$ is true if $A$ or $B$ is true
+    \item $F$ is true if exactly one of the inputs is true. But we don't care about $F$ if both $D$ and $E$ are true
+    \end{itemize}
+  The truth table is as follows:
+  \begin{figure}[H]
+    \centering
+   \begin{tabular}{|c|c|c|c|c|c|}
+  \hline \multicolumn{3}{|c|}{ Inputs } & \multicolumn{3}{|c|}{ Outputs } \\
+  \hline $A$ & $B$ & $C$ & $D$ & $E$ & $F$\\
+  \hline \cellcolor{red!25}0   & \cellcolor{red!25}0   & \cellcolor{red!25}0   &  \cellcolor{red!25}0   & \cellcolor{red!25}0   & \cellcolor{red!25}0     \\
+  \hline \cellcolor{red!25}0   & \cellcolor{red!25}0   & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{red!25}0   & \cellcolor{green!25}1\\
+  \hline \cellcolor{red!25}0   & \cellcolor{green!25}1 & \cellcolor{red!25}0   &  \cellcolor{red!25}0   & \cellcolor{green!25}1 & \cellcolor{green!25}1  \\
+  \hline \cellcolor{red!25}0   & \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{red!25}0  \\
+  \hline \cellcolor{green!25}1 & \cellcolor{red!25}0   & \cellcolor{red!25}0   &  \cellcolor{green!25}1 & \cellcolor{green!25}1   & \cellcolor{green!25}1  \\
+  \hline \cellcolor{green!25}1 & \cellcolor{red!25}0   & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{red!25}0  \\
+  \hline \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{red!25}0   &  \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{red!25}0  \\
+  \hline \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{green!25}1   & \cellcolor{red!25}0  \\
+  \hline
+\end{tabular}.
+\begin{tabular}{|c|c|c|c|c|c|}
+  \hline \multicolumn{3}{|c|}{ Inputs } & \multicolumn{3}{|c|}{ Outputs } \\
+  \hline $A$ & $B$ & $C$ & $D$ & $E$ & $F$\\
+  \hline \cellcolor{red!25}0   & \cellcolor{red!25}0   & \cellcolor{red!25}0   &  \cellcolor{red!25}0   & \cellcolor{red!25}0   & \cellcolor{red!25}0     \\
+  \hline \cellcolor{red!25}0   & \cellcolor{red!25}0   & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{red!25}0   & \cellcolor{green!25}1\\
+  \hline \cellcolor{red!25}0   & \cellcolor{green!25}1 & \cellcolor{red!25}0   &  \cellcolor{red!25}0   & \cellcolor{green!25}1 & \cellcolor{green!25}1  \\
+  \hline \cellcolor{blue!25}X  & \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{blue!25}X  \\
+  \hline \cellcolor{green!25}1 & \cellcolor{blue!25}X  & \cellcolor{blue!25}X  &  \cellcolor{green!25}1 & \cellcolor{green!25}1 & \cellcolor{blue!25}X  \\
+  \hline
+\end{tabular}.
+    \caption{Notice that with the use of don't cares, we can have the truth table be smaller because of repeated rows.}
+    \label{fig:}
+  \end{figure}
+\subsubsection{Arrays of Logic Units}
+  Up until now we have been performing combinational operations on just single bits, but we often want to do the same operations on whole words ($32$-bits).  For example you may want to see if the value in one register is the same as the value as the other.  Or you may want to have a MUX that selects between two words, and not just two bits:
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=9cm]{28.png}
+    \caption{The $32$-bit MUX is just $32$ 1-bit MUX's connected together.}
+    \label{fig:}
+  \end{figure}
+
+  \section{Constructing a Basic Arithmetic Logic Unit}
+An ALU is the part of the processor that is responsible for performing both logical and arithmetic operations such as addition, subtraction, AND, and OR.
+\subsection{1-Bit ALU}\label{subsec:}
+  Let's go about implementing each of the different operations an ALU can perform.
+  \subsubsection{AND / OR Logical Operation}
+  To implement this you just have a MUX that selects between the AND, and OR operations:
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=8cm]{30.png}
+    \caption{The multiplexor selects between and or or depending upon the opcode recieved.}
+    \label{fig:}
+  \end{figure}
+
+  \subsubsection{Addition}
+  To implement addition, with each bit in addition to looking at the bits adding together we also want to see if there was carryover from the the prior (less significant) bit.  Thus, to deploy our operation in hardware we will need three \textbf{inputs}:
+  \begin{itemize}
+  \item $a$
+  \item $b$
+  \item carry in
+  \end{itemize}
+  and two \textbf{outputs}:
+  \begin{itemize}
+  \item computed sum
+  \item carry out.
+  \end{itemize}
+  How is the carry out computed?  Well, there is carry out if 2 or 3 of the inputs are true.  Thus we have
+  \begin{align*}
+\text{ Carry Out } &= (a \cdot b) + (a \cdot \text{ carry in}) + (b \cdot \text{ carry in})
+                     + (a\cdot b \cdot \text{ carry in})\\
+                   &=  (a \cdot b) + (a \cdot \text{ carry in}) + (b \cdot \text{ carry in}).
+  \end{align*}
+  Implementing this using logic gates we have:
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=8cm]{31.png}
+    \caption{For cary out to be true we need to have t least two of the inputs to be true.}
+    \label{fig:}
+  \end{figure}
+  To calculate the \textbf{sum} using logic we see that sum will be true if an odd number of inputs are true (1 or 3).  Therefore:
+  \begin{align*}
+    \text{ sum } &= (a \cdot \bar{b} \cdot \overline{\text{carry in}}) + (\bar{a} \cdot b \cdot \overline{\text{carry in}}) + (\bar{a} \cdot \bar{b} \cdot \text{  carry in}) + (a\cdot b \cdot \text{ carry in}). 
+  \end{align*}
+  Implementing this using logic gates we have:
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=8cm]{32.png}
+  \caption{Sum is true if there are an odd number of true inputs.}
+  \label{fig:}
+\end{figure}
+\subsubsection{Completing the 1-Bit ALU}
+To complete the 1-bit ALU we just connect the AND/OR/ADD operations to a mux that selects the desired operation.
+
+\subsection{32-Bit ALU}\label{subsec:}
+The 32-bit ALU is created by connecting 32 1-bit ALU together.  Although we have our 1-bit ALU, there are some additional features that we want to make sure we have.
+\subsubsection{Subtraction}
+To compute subtraction we will use the addition we have already implemented and add a negative number.  We can do this because $-b = \bar{b} + 1$.  To get $\bar{x}$ we thus need an inverter that inverts each of the bits of $b$.  We need to connect that inverter to a MUX which selects the inverted $b$ (if subtraction) or the original $b$ (if addition). We will add one through the use of the carry in input of the lsb since that will be $0$ when addition and $1$ when subtraction.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=6cm]{33.png}
+  \caption{For subtraction we use the value of carry in to additionally select whether we should invert $b$ or not.  The operation code selects between AND, OR, and ADD (which also performs subtraction depending upon value of carry in).}
+  \label{fig:}
+\end{figure}
+
+\subsubsection{NOR (Neither a nor b)}
+Because
+\[(\overline{a + b}) = \bar{a} \cdot \bar{b}\]
+we are able to utilize the existing Binvert and AND gate and only need to add an inversion of a.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=8cm]{34.png}
+  \caption{For NOR the output of the AND gate is used but with both Ainvert and Binvert inputs set as true.}
+  \label{fig:}
+\end{figure}
+\pagebreak
+\subsubsection{Shift Less Than}
+For \texttt{slt} we return $1$ if \texttt{rs < rt} and $0$ otherwise.  To test for this we can use subtraction because
+\[a < b \Leftrightarrow (a-b) < 0\]
+and thus if the result of $a-b$ is negative we set the lsb to 1.  How does this work in practice?  Well the 31 most significant ALUs are easy, we just connect 0 directly to the MUX that selects the desired operation. We will label this input \texttt{sltResult}.  For the least significant bit we connect the result of the adder of the msb to the least significant bit input \texttt{sltResult}.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=8cm]{35.png}
+  \caption{To perform \texttt{slt} we set operation to 3, Binvert to $1$ and \texttt{sltResult} to 0 for the 31 MSBs but use the result of the adder for the MSB to set the value of \texttt{sltResult} of the LSB}
+  \label{fig:}
+\end{figure}
+
+
+
 
 
 \end{document}
