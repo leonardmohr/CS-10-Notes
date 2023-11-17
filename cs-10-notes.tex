@@ -1633,6 +1633,167 @@ and thus if the result of $a-b$ is negative we set the lsb to 1.  How does this 
   \label{fig:}
 \end{figure}
 
+\section{Memory Elements}
+In addition to providing combinational logic, we also want our processor to have state.  Let's look at how we can creatae memory elements.
+
+\subsection{S-R Latch}\label{subsec:}
+
+One of the main building blocks of memory is a \textbf{pair of cross-coupled NOR gates}. Let's say you have two lights, and you wanted it so that turning one one would turn the other off and vice-versa.  You could use these cross coupled NOR gates to achieve this.
+
+\begin{figure}[H]
+  \centering
+  \begin{circuitikz}
+    % Draw the NOR gates
+    \draw (0,0) node[nor port] (nor1) {}
+ (nor1.in 1) node [anchor=east] {S};
+    \draw (0,-2) node[nor port] (nor2) {}
+(nor2.in 2) node [anchor=east] {R};
+ 
+    % Connect the output of the first NOR gate to the second NOR gate
+    \draw (nor1.out) -- (nor2.in 1);
+    \draw (nor2.out) -- (nor1.in 2);
+    
+    % Draw the output
+    \draw (nor2.out) -- ++(0.5,0) node[right] {$Q$};
+    \draw (nor1.out) -- ++(0.5,0) node[right] {$\overline{Q}$};
+\end{circuitikz}
+  \caption{We have two inputs $R$ (Reset) and $S$ (Set). If you activate $R$ and not $S$ then the output of the top NOR gate will be 0 (since one of the inputs is 1).  This will then connect with the bottom NOR gate and thus $\bar{Q} = 1$.  The reason that the output of one gate can be the input of another is that you wait until the system is stable (sice for same inputs you will always have same outputs in a combinational circuit)}
+  \label{fig:}
+\end{figure}
+\begin{marginfigure}
+  \begin{center}
+    \begin{tabular}{|c|c|c|c|}
+\hline \multicolumn{2}{|c|}{ Inputs } & \multicolumn{2}{c|}{ Outputs } \\
+\hline$S$ & $R$ & $Q$ & $\bar{Q}$ \\
+  \hline \cellcolor{red!25}0 & \cellcolor{red!25}0 &  \cellcolor{blue!25}X & \cellcolor{blue!25}X  \\
+\hline \cellcolor{red!25}0 & \cellcolor{green!25}1 &  \cellcolor{red!25}0 & \cellcolor{green!25}1  \\
+\hline \cellcolor{green!25}1 & \cellcolor{red!25}0 &  \cellcolor{green!25}1 & \cellcolor{red!25}0  \\
+\hline \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{red!55}! & \cellcolor{red!55}!  \\
+\hline
+\end{tabular}
+  \end{center}
+  \caption{When both $S$ and $R$ are deasserted then the value of $Q$ and $\bar{Q}$ remain unchanged.  When both are asserted, then undefined behavior is the result.  When only $S$ is asserted then $Q = 1$ and when only $R$ is asserted then $\bar{Q} = 1$.}  
+\end{marginfigure}%
+
+\subsection{Latches}\label{subsec:}
+\subsubsection{Transparent Latch}
+A transparent latch is one which immediately responds to a change in the input. In this way it is an asynchronous memory element.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=5cm]{40.png}
+  \caption{A transparent latch will immediatly respond to a change in input. So in this example the input of a latch changes from $0$ to $1$ and that change is immediatly reflected in the output.}
+  \label{fig:}
+\end{figure}
+Notice that the output is the same as the input. This is because the output of a latch is the same as the memory value that is stored inside.  
+
+\subsubsection{Gated Latch}
+A gated latch is a latch whose output only changes to changes in input (becomes transparent) when the clock is high.
+\begin{marginfigure}
+  \begin{center}
+    \includegraphics[width=\linewidth]{41.png}
+  \end{center}
+  \caption{The gated latch has an additional ``enable'' input.  This is asserted when the clock level is high and deasserted when not.}
+\end{marginfigure}%
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=7cm]{42.png}
+  \caption{We see that in a gated latch that changes to input when the clock is low are not affected in the output, and that the output only changes when the clock is high.}
+  \label{fig:}
+\end{figure}
+
+We can utilize our S-R latch to build a gated D latch.  What is our goal? We want our output $Q$ to reflect our data input $D$ only when our clock $C$ is asserted. Therefore, we will have two AND gates with $C$ as an input of each.  If we connect the output of these AND gates to the input of our NOR gates then that means that if $C$ is deasserted then the the inputs of our SR Latch will be $(0,0)$ and nothing will happen.  If we connect $D$ with the AND gate going into the set input of our SR Latch, then that will set $Q = 1$.  Similarily if we have the inverse of $D$ going into the AND gate whose output is the input for the reset, then that will turn $Q = 0$.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=7cm]{45.png}
+  \caption{Implementing a D Latch using logic gates.}
+  \label{fig:}
+\end{figure}
+
+
+\subsubsection{Flip-Flop}
+A flip-flop is very similar to a gated latch except that it becomes transparent only on the rising edge or falling edge of the clock, depending upon if it is \textit{positive-edge triggered} or \textit{negative-edge triggered}.  
+\begin{marginfigure}
+  \begin{center}
+    \includegraphics[width=\linewidth]{43.png}
+  \end{center}
+  \caption{A flip-flop also accepts the clock signal as an input, and is transparent only on the rising or falling edge (exclusive or).}
+\end{marginfigure}%
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=7cm]{44.png}
+  \caption{We see that the output only is changed when there is a rising clock edge.}
+  \label{fig:}
+\end{figure}
+How can we implement a Flip-Flop?  Well what if we had some kind of circuit that took the clock signal and converted the rising (or falling) edge into little blips:
+\begin{center}
+\includegraphics[width=7cm]{46.png}
+\end{center} 
+Well, then we can use our D-Latch implementation, because it will only be transparent on rising edges (since $E$ will only be asserted for a very short time). How can we implement this? \\
+\textbf{Making Use of Inverter Delay}
+
+Well one way is with the use of AND gate whose inputs are $D$ and $D$ passing through a NOT gate:
+\begin{center}
+\includegraphics[width=\linewidth]{47.png}
+\end{center}
+You may think that the light bulb will never turn on, and you would almost be correct.  But because it takes a little bit of time for the signal to pass through the inverter, when the clock goes from low to high (rising edge), then both inputs of the and function will be 1 for a split second and the lightbulb will turn on.\\\\
+\textbf{Master-Slave Flip Flop}\\
+Let's say you want to design a negative-edge triggered $D$ flip flip.  Well, if we constrain ourselves to having the data input being stable for the duration of the rising and falling edge of the clock cycle (and a bit before and after), then we can create a flip flop by connecting two D-latches together:
+\begin{itemize}
+\item The first latch will be transparent on a high clock signal and take in $D$ as the input setting $Q$.  The output $Q$ will then connect to another $D$ latch.
+\item The second latch will be transperent on a low clock signal and take in $D$ as the input (passed through the first D-Latch).
+\end{itemize}
+In this way the flip flip will only update on a falling-edge trigger.
+\begin{center}
+\includegraphics[width=7cm]{48.png}
+\end{center}
+\begin{definition}
+\textbf{D Latch}: A latch with one data input (called D) that stores the value of that input signal in the internal memory when the clock is high.\\\\
+\textbf{D Flip-Flop}: A flip-flop with one data input (called D) that stores the value of that input signal in the internal memory when the clock edge occurs.
+\end{definition}
+
+\section{The Processor}
+\subsection{Introduction}\label{subsec:}
+We will be building a simplified RISC processor that implements a subset of the RISC ISA. We will be implementing instructions related to:
+\begin{itemize}
+\item Memory-Reference: \texttt{lw} and \texttt{sw}
+\item ALU: \texttt{add}, \texttt{sub}, \texttt{AND}, \texttt{OR}, and \texttt{slt}
+\item Branch: \texttt{beq} and \texttt{j} 
+\end{itemize}
+What does a processor look like?
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=7cm]{49.png}
+  \caption{A big picture view of a processory}
+  \label{fig:}
+\end{figure}
+What are the two main components of a CPU:
+\begin{marginfigure}
+    Processor (CPU): This is the active part of the computer that does all the work (data manipulation and decision-making)
+\end{marginfigure}%
+\begin{itemize}
+\item Datapath: This is the portion of the processor that contains the hardware necessary to perform operations required by the processor. This is the brawn of the processor. We could build a sperate datapath for every instruction.  Instead, we build one datapath that operates many instructions.
+\item Control: Another hardware portion of the processor that tells the datapath what needs to be done (the brain)
+\end{itemize}
+How does a processor perform our instructions? Well, let's look at a big picture view into a processor:
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{50.png}
+  \label{fig:}
+\end{figure}
+What is going on here?
+\begin{itemize}
+\item The first thing that happens is we load the instruction using the address stored in the PC.  Recll that the PC stores the address of the next instruction to be performed.
+\item The address from the PC also gets sent to an adder to load the next instruction.
+\item But if the instruction is a branch instruction then the PC needs to reflect that, so thus the MUX.  
+\item The register fields from the instruction are then sent to the register file giving us the appropriate register operands which can then can be used to perform our operation.
+\item The operation could be to compute a memory address (for load or store), or to perform an ALU operation.  
+\item If it is a memory store operation, then the appropriate value is stored in memory.
+\item If it was an arithmetic operation or a memory load operation, the value is then written back to the appropriate register.
+\item Note that the ZERO output of the ALU is used on \texttt{beq} instructions. 
+\end{itemize}
+
+\subsection{Logic Design Conventions}\label{subsec:}
+
 
 
 
