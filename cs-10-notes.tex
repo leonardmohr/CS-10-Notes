@@ -1379,11 +1379,11 @@ For example, we can build function $C = \bar{A} \cdot \bar{B}$ as follows:
 \[
 \begin{tabular}{|c|c|c|c|c|c|}
 \hline \multicolumn{2}{|c|}{ Inputs } & \multicolumn{4}{c|}{ Outputs } \\
-\hline$A$ & $B$ & $C$ & $D$ & $E$ & F\\
- \hline \cellcolor{red!25}0 & \cellcolor{red!25}0 & \cellcolor{red!25}0 &  \cellcolor{red!25}0 & \cellcolor{red!25}0 & \cellcolor{green!25}1 \\
-\hline \cellcolor{red!25}0 & \cellcolor{green!25}1 & \cellcolor{red!25}0 &  \cellcolor{red!25}0 & \cellcolor{green!25}1 & \cellcolor{red!25}0 \\
-\hline \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{red!25}0 &  \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{red!25}0 \\
-\hline \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{red!25}0 & \cellcolor{red!25}0 \\
+\hline$A$ & $B$ & $x_0$ & $x_1$ & $x_2$ & x_3\\
+ \hline \cellcolor{red!25}0 & \cellcolor{red!25}0 & \cellcolor{green!25}1 &  \cellcolor{red!25}0 & \cellcolor{red!25}0 & \cellcolor{red!25}0 \\
+\hline \cellcolor{red!25}0 & \cellcolor{green!25}1 & \cellcolor{red!25}0 &  \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{red!25}0 \\
+\hline \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{red!25}0 &  \cellcolor{red!25}0 & \cellcolor{green!25}1 & \cellcolor{red!25}0 \\
+\hline \cellcolor{green!25}1 & \cellcolor{green!25}1 &  \cellcolor{green!25}1 & \cellcolor{red!25}0 & \cellcolor{red!25}0 & \cellcolor{green!25}1 \\
 \hline
 \end{tabular}.
   \]
@@ -1393,6 +1393,13 @@ For example, we can build function $C = \bar{A} \cdot \bar{B}$ as follows:
     \end{center}
     \caption{A 3 bit decoder}
   \end{marginfigure}%
+We can construct a 2 in, 4 out decoder using AND gates:
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=7cm]{55.png}
+  \caption{Notice how only one output will be asserted, all others will be deasserted.}
+  \label{fig:}
+\end{figure}
 
 \subsubsection{Multiplexer}
   A multiplexer is selects one of the given inputs based upon the select signal given. A multiplexer has three parts:
@@ -1746,6 +1753,30 @@ In this way the flip flip will only update on a falling-edge trigger.
 \begin{center}
 \includegraphics[width=7cm]{48.png}
 \end{center}
+
+\subsubsection{Register Files}
+A register file consists of a set of registers that can be read and written to by supplying a register number to be accessed.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=8cm]{53.png}
+  \caption{A register file needs two read register inputs (one for each register that will be read), an input that says what register should be written to, an input that says what data should be written, and a control input specifiying if a write operation will be performed.}
+  \label{fig:}
+\end{figure}
+\textbf{The Read Port}\\
+Implementing the read port is rather simpl.  You can have all $n$ registers connected to two different $n\rightarrow 1$ MUXs, which use the read register numbers to select the register to be read from:
+\begin{center}
+\includegraphics[width=7cm]{54.png}
+\end{center}
+\textbf{The Write Port}\\
+In the read port, we could ``read'' from all the registers and select only the one that we want using a MUX. For the write port though, we can only write to one register, and so the logic is a little bit more complicated.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=7cm]{56.png}
+  \caption{The main part of the write port is a decoder where $n$ is the number of bits needed to describe the number of registers there are. The decoder will only assert the given register, thus data will only get written to the desired register and none of the others (through the use of the AND gates).}
+  \label{fig:}
+\end{figure}
+
+
 \begin{definition}
 \textbf{D Latch}: A latch with one data input (called D) that stores the value of that input signal in the internal memory when the clock is high.\\\\
 \textbf{D Flip-Flop}: A flip-flop with one data input (called D) that stores the value of that input signal in the internal memory when the clock edge occurs.
@@ -1793,6 +1824,354 @@ What is going on here?
 \end{itemize}
 
 \subsection{Logic Design Conventions}\label{subsec:}
+The processor is a combination of state and combinational logic.  
+\begin{marginfigure}
+  \begin{center}
+    \includegraphics[width=\linewidth]{51.png}
+  \end{center}
+  \caption{The only state elements are the \texttt{PC}, the instruction memory, the register file, and the data memory.  These state elements connect to the combinational logic blocks of our processor whose result is then fed back into our state elements.}
+\end{marginfigure}%
+\begin{itemize}
+\item Instead of thinking about the combinational logic as one big bubble, we break it up into multiple blocks of logic as that is a lot easier to manage.
+\item A state element has at least two inputs (and one output).  The inputs are the data value to be written and the clock, which determines when the value is to be written.
+\end{itemize}
+\subsubsection{Clocking Methodology}
+Because we are reading from our state elements, performing combinational logic, and then writing back into the same state elements it is really important that we carefully control when our state elements are allowed to be read and written to.  Because otherwise we would get undefined behavior (maybe reading the new value instead of the old or some combination of the new and old value).
+
+We have looked at different ways in which we can control the time in which state changes are allowed.  For now, we will assume that all state changes are \textbf{edge triggered}. 
+
+\subsection{Building a Datapath}\label{subsec:}
+\subsubsection{Reading an Instruction}
+To read an instruction we need to have the program counter (\texttt{PC}) as an input to the instruction memory, from where the instruction is outputted.  We also need to update the PC which we can do using an adder.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=8cm]{52.png}
+  \caption{The part of the datapath responsible for fetching the instruction and incrementing the \texttt{PC}.}
+  \label{fig:}
+\end{figure}
+
+\subsubsection{R-Type Instructions}
+Let's say that after reading our instruction, it turns out to be an R-type instructios.  These will be our ALU instructions \texttt{add}, \texttt{sub}, \texttt{or}, \texttt{and}, and \texttt{slt}.  For these instructions we will be reading from two registers, performing an ALU operation and writing back to a third register.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{57.png}
+  \caption{We see that the register file takes in as inputs the various fields from the instruction, which takes in the register numbers and outpus the data contained in those registers to the ALU.  The ALU then performs the operation dictated by control, and then sends the result back to the register file.}
+  \label{fig:}
+\end{figure}
+\subsubsection{Memory Operations -- Loads and Stores}
+Before thinking about how to build the datapath, what is happening when loads and stores are performed?
+\begin{itemize}
+\item Loads
+\begin{itemize}
+\item Add base register to the 16-bit signed offset field.
+\item Read the value at that memory location and write back to register using register file.
+\end{itemize}
+\item Stores
+\begin{itemize}
+\item Add base register to 16-bit signed offset value
+\item use register file to read the contents of provided register and write those contents into the computed memory address.
+\end{itemize}
+\end{itemize}
+For the compution of the offset:
+\begin{itemize}
+\item We need to sign extend the offset field from $16 \rightarrow 32$ bits.
+\item We add that value to the address specified by the register (normally \texttt{\$sp})
+\end{itemize}
+Therefore in addition to the program counter, instruction memory, register file and ALU,   we will need a way to sign-extend the immediate value, and we will also make use of the data memory segment.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=9cm]{58.png}
+  \caption{The datapath and control lines for load and store instructions.}
+  \label{fig:}
+\end{figure}
+
+\subsubsection{Branch if Equal}
+For the branch if equal (\texttt{beq}) instruction the two operands (\texttt{rs} and \texttt{rt}) are compared and if equal, will jump to the address that the immediate operand encodes.  There are a couple things that need to be implemented to create the datapath of this instruction:
+\begin{itemize}
+\item It will use the \texttt{zero} output of the ALU to test for equality.  If equal, it will be asserted.
+\item The 16-bit immediate value will be sign extended to 32-bits.
+\item This value will then be shifted left 2 bits and added to \texttt{PC+4} to compute the address to be branched to.
+\end{itemize}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{59.png}
+  \caption{The datapath and control signals needed to implement the branch if equal instruction.}
+  \label{fig:}
+\end{figure}
+
+\subsubsection{Putting Everything Together}
+Combining the hardware of these three instructions into one, we get:
+\begin{center}
+\includegraphics[width=\linewidth]{60.png}
+\end{center}
+The value of each control line is completely determined by the opcode fields of the instruction:
+\begin{center}
+\includegraphics[width=9cm]{61.png}
+\end{center}
+The control function can be entirely described by the following truth table:
+\begin{center}
+\includegraphics[width=8cm]{62.png}
+\end{center}
+
+\subsubsection{Jump Instruction}
+Recall what the jump instruction looks like:
+\begin{lstlisting}[style=CStyle, numbers=none, xleftmargin=5.0ex, aboveskip=0.5em, belowskip=0.5em, numberstyle=\color{blue}, escapeinside=..]
+ ------ --------------------------
+|000010|     encoded address      |
+ ------ --------------------------
+ 31:26              25:0
+\end{lstlisting}
+This performs an uncoditional jump instruction to the following decoded address where:
+\begin{itemize}
+\item Bits 31:28: upper 4 bits of PC + 4
+\item Bits 27:2: encoded address
+\item Bits 1:0: 00
+\end{itemize}
+Thus we we have the address that will be jumped to is:
+\begin{lstlisting}[style=CStyle, numbers=none, xleftmargin=5.0ex, aboveskip=0.5em, belowskip=0.5em, numberstyle=\color{blue}, escapeinside=..]
+ ---- -------------------------- --
+|PC+4|      encoded address     |00|
+ ---- -------------------------- --
+ 31:28          27:2
+\end{lstlisting}
+We can add the jump instruction by selecting between \texttt{(jump || (branch || PC+4))}, and adding the hardware to compute the jump address:
+\begin{center}
+\includegraphics[width=9cm]{63.png}
+\end{center}
+
+\subsection{Pipelining Overview}\label{subsec:}
+Let's say you have a car factory composed of four people:
+\begin{itemize}
+\item An engine builder
+\item A frame builder
+\item An interior builder
+\item A tester
+\end{itemize}
+A really inefficient way to build the car would for the engine guy to build the engine and then wait around while the frame builder finished the frame, who then finishes and waits for the interior guy to do the interior, who then finishes and waits for the tester to finish.  Then once the whole car is finished, the process starts over again.
+
+What would be a lot quicker would be for the engine guy to build an engine, and when he finishes he starts building another one. The frame guy gets the first engine and builds a frame around it and once he finishes he gets another frame from the engine guy, and so on and so forth.  This is called Pipelining.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=9cm]{64.png}
+  \caption{We see that in the same amount of time that the non-pipelined factory built two cars (8 hrs), the pipelined factory built five cars.}
+  \label{fig:}
+\end{figure}
+
+\subsubsection{Designing Instruction Sets for Pipelining}
+What about our MIPS instruction set design makes pipelining easy?
+\begin{itemize}
+\item All MIPS instructions are the same length.  This allows instruction fetch and instruction decode to be easily seperated into two phases.
+\item There are only a couple instruction formats.  And all source register fields are located in the same place.  This allows the second stage (instruction decode) can begin reading the register file at the same time that the hardware is determining the instruction type.
+\item Memory operands only appear in loads or stores.  This means we can use the execute stage to calculate the memory address and then access the memory in the following stage
+\item Each MIPS instruction writes at most one result and does this in the last stage of the pipeline.  Forwarding is harder if there are multiple results to forward per instruction or if there is a need to write a result early on in instruction execution.
+\end{itemize}
+\subsection{Pipeline Hazards}\label{subsec:}
+\begin{marginfigure}
+A \textbf{data hazard} is when we cannot execute a planned instruction in the proper clock cycle because data that is needed to execute the instruction is not yet available.
+\end{marginfigure}%
+
+Let's look at a code example with and without pipeline hazards so that we can better understand them:
+\begin{marginfigure}
+A \textbf{structural hazard} is two instructions in a pipeline need the same hardware resource at the same time.
+\end{marginfigure}%
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=9cm]{65.png}
+  \caption{The first code segment has no pipeline hazards, but the bottom one has three: a data hazard, a structural hazard, and a control hazard.}
+  \label{fig:}
+\end{figure}
+
+\begin{marginfigure}
+A \textbf{control hazard} is when the proper instruction cannot execute in the proper pipeline clock cycle because the instruction that was fetched is not the one that is needed; that is, the flow of instruction addresses is not what the pipeline expected.
+\end{marginfigure}%
+
+\subsubsection{Data Hazards}
+To avoid the data hazard in the code above we could stall (perform a \texttt{nop}) which would then make the data available to be used.  The problem with this, is data hazards can occur frequently and having the compiler stall (sometimes up to three \texttt{nop}s) is incredibly inefficient.  Instead what we can do is instead of waiting for the ALU to write the result to the register file and then accessing that data from the register file, we can grab the result directly from the ALU output.  This is called forwarding.
+
+There is a limit to what forwarding can be achieved though.  For example let's say we are performing the following code:
+\begin{lstlisting}[style=CStyle, numbers=left, xleftmargin=5.0ex, aboveskip=0.5em, belowskip=0.5em, numberstyle=\color{blue}, escapeinside=||]
+lw  $s0, 20($t1)
+sub $t2, $s0, $t3  #$
+\end{lstlisting}
+Without forwarding, we would need two \texttt{nop}s so that the register read from is the has the correct written value. We are assuming that if a register is written to and read from in the same cycle that the value read is the same that is written.
+
+\begin{lstlisting}[style=CStyle, numbers=none, xleftmargin=5.0ex, aboveskip=0.5em, belowskip=0.5em, numberstyle=\color{blue}, escapeinside=..]
+      ---- ---- ---- ---- ---- ---- ----- ---- ---- ----
+  lw | IF | ID | EX | MEM| WB |    |     |    |    |    |
+      ---- ---- ---- ---- ---- ---- ----- ---- ---- ----
+ nop |    | X  | X  | X  | X  | X  |     |    |    |    |
+      ---- ---- ---- ---- ---- ---- ----- ---- ---- ----
+ nop |    |    | X  | X  | X  | X  | X   |    |    |    |
+      ---- ---- ---- ---- ---- ---- ----- ---- ---- ----
+sub  |    |    |    | IF | ID | EX | MEM | WB |    |    |
+      ---- ---- ---- ---- ---- ---- ----- ---- ---- ----
+\end{lstlisting}
+\begin{marginfigure}
+  \begin{center}
+    \includegraphics[width=\linewidth]{66.png}
+  \end{center}
+  \caption{We see that even with forwarding, a pipeline stall is necessary when a \texttt{sub} follows a \texttt{lw}.  One complication we have hidden away is that determining whether a stall is necessary won't really be known untill after the instruction is fetched and decoded (because we won't know if the register being read from is the same as that being written to in the \texttt{lw} instruction).}
+\end{marginfigure}%
+
+\subsubsection{Control Hazards}
+Control hazards arise when a decision needs to be made which depends upon the the result of an instruction that is still processing.  This often arises from conditional branch instructions: we cannot possibly know if we should branch on a \texttt{beq} instruction until we have determined if the arguments are equal.
+
+One solution would be to just stall and wait until we have tested for equality.  This is obviously not ideal since there will be a $100\%$ chance of a slowdown when a branch is encountered.  Another possibility is to always take the branch and only if we subsequently realize that we shouldn't have, to untake the branch. This means that there will only be a slowdown if we were wrong.  Another option would be to dynamically predict if we should take the branch by keeping a history of branches taken and untaken and using that to predict if a branch should be taken.
+
+\subsection{Pipelined Datapath and Control}
+Unfortunately we can't simply cut up our processor, put the instructions through and everythig will work out :(.  For example whereas in a pipelined car factory the current car doesn't depend upon the previous car, in a pipelined processor the current instruction sometimes does depend upon the previoius instruction, and that makes things a little bit more complicated.
+
+Idea:
+\begin{itemize}
+\item We are going to divide the instruction processing cycle into distinct ``stages'' of processing.
+\item At each stage we are going to ensure that there are enough hardware resources to process one instruction in each stage
+\item We will process a different instruction in each stage, where consecutive instructions in program order are processed in consecutive stages.
+\end{itemize}
+
+The benefit of pipelining is that it will increase processor \textbf{throughput}; under ideal circumstances we should be finishing an instruction every cycle.  This however will not increase \textbf{latency} (the time it takes to complete an individual instruction).
+\begin{marginfigure}
+In fact, pipelining will actually increase latency a little bit because of the overhead required in implementing the pipelined processor.
+\end{marginfigure}%
+\subsubsection{An Ideal Pipeline}
+Let's look at an ideal pipeline so that we can see how our pipelined processor strays from an idealized ones and what kind of complications we may encounter along the way.
+\begin{itemize}
+\item Repetition of identical operations.  That is each instruction goes through the same steps. For our processor this won't be the case because an \texttt{add} doesn't access data memory like that of a \texttt{lw} instruction.
+\item Repetition of independent operations.  That is, no instructions are dependent upone previous instructions.  This of course won't always be the case (data or control hazards).
+\item Uniformly partitionable suboperations.  That is processing can be evenly divided into uniform-latency suboperations (that don't share resources). Or more simply, each phase of the pipeline takes the same amount of time, and each phase is independent of the other phase.  This would allow all parts of the processor to be active at all times.  This isn't the case because the ALU takes more time than reading from a register.
+\end{itemize}
+
+\subsubsection{Register Overhead}
+Recall that a processor is composed of state (memory) feeding into combinational logic, and that memory is formed using latches and flip-flops which can only be changed on rising edges.  This means that when we split up our processor we need to have latches (registers/state) between each combinational logic phase.  This places a limit on how many pipeline stages we can have, and thus the throughput is not increased by a factor of $n$ where $n$ is the number of pipeline stages; there comes a point when adding more pipeline stages just means that the processor will be spending more time on register overhead than actual processing.   
+
+In our five stage pipelined processor there is a pipelined register between each stage:
+\begin{marginfigure}
+The pipeline registers have to be large enough to contain the information required to compute all possible instructions, as we won't know which instruction will be performed until the instruction is fetched from memory.
+\end{marginfigure}%
+\begin{itemize}
+\item \textbf{IF/ID} This holds the 32-bit instruction fetched from memory and the 32-bit \texttt{PC+4} which we need to save because we will need it in the case of a \texttt{beq} instruction (where the immediate value is sign extended, shifted left 2 bits, and added to \texttt{PC+4}).
+\item \textbf{ID/EX}
+\item \textbf{EX/MEM}
+\item \textbf{MEM/WB} 
+\end{itemize}
+Also note that the PC is also a type of pipeline register as it serves to store state before connecting into combinational logic.
+
+\subsubsection{Instruction Fetch}
+In this stage we fetch the instruction at the address indicated by the \texttt{PC}. The \texttt{PC} is also incremented by 4. We store both values in the IF/ID pipeline register in case PC+4 is need for a later instruction (such as \texttt{beq}).  We also save \texttt{PC+4} into the program counter so that the next instruction can be fetched in the next cycle.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=9cm]{67.png}
+  \caption{The first stage of our pipeline.}
+  \label{fig:}
+\end{figure}
+
+\subsubsection{Instruction Decode}
+The sign-extended 16-bit immediate value, the register contents and \texttt{PC+4} are all sent to the ID/EX pipeline register.  
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=9cm]{68.png}
+  \caption{The instruction decode and register file read stage of our pipeline}
+  \label{fig:}
+\end{figure}
+
+\begin{marginfigure}
+  \begin{center}
+    \includegraphics[width=\linewidth]{69.png}
+  \end{center}
+  \caption{The key thing to remember is that the pipeline registers are necessary to connect the combinational logic with state in between pipeline stages.  Also since we need to be able to work for all types of instructions, the data needed for any type of instruction needs to be passed through.}
+\end{marginfigure}%
+
+\subsubsection{Bug Alert!!}
+Let's say that we perfor the following opperations:
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=9cm]{70.png}
+  \caption{If you look at the diagram on the right, we see that the data fetched from data memory by the \texttt{lw} instruction will be placed in the register designated by the \texttt{or} instruction!!  What we must do instead is pass the write register number along the pipeline and then send that back along with the write data.}
+  \label{fig:}
+\end{figure}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=9cm]{71.png}
+  \caption{We see that we can fix the bug by passing the write register number along the pipeline and then back when it is needed in the writeback phase.}
+  \label{fig:}
+\end{figure}
+
+\subsection{Pipelined Control}\label{subsec:}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=9cm]{72.png}
+  \caption{The pipelined datapath}
+  \label{fig:}
+\end{figure}
+Let's go through these signals by phase:
+\begin{itemize}
+\item \textbf{Instruction Fetch}
+\begin{itemize}
+\item The mux recieves the result of \texttt{zero \& Branch}.  Recall that the \texttt{zero} signal comes from the ALU and is asserted when the two values being compared are equal, and the branch signal is asserted when the instruction is \texttt{beq}.  If the signal is asserted than the branch address is set to PC.  If deasserted than PC is set to \texttt{PC+4}. 
+
+\item A write signal for PC isn't necessary because we are designing the processor so that the PC is updated every clock cycle. 
+\end{itemize}
+\item \textbf{Instruction Decode}
+\begin{itemize}
+\item The register write signal \texttt{RegWrite} determines whether the signal register should be written to or not.  Note that just like the data to be written, this signal needs to get passed down the pipeline and then sent back to the register file so that the RegWrite signal corresponds to the correct instruction.
+\item Signals aren't necessary for reg read or sign-extend since those happen every clock cycle.
+\end{itemize}
+\item \textbf{Execute}
+\begin{itemize}
+\item Two signals will need to be sent to the ALU control:
+\begin{itemize}
+\item \texttt{ALUOp}: A two bit signal which determines if the instruction is a load/store, branch if equal, or an R-type instruction.
+\item Funct Field: If an R-type insturction this 6-bit signal determins the R-type operation (\texttt{AND}, \texttt{OR}, \texttt{slt} (set less than), \texttt{add}, or \texttt{sub}).
+\item The function field signal can come from the sign extended 16-bits as the least significant 6 bits will be correct if an R-type instruction and won't be used if not. 
+\end{itemize}
+\item \texttt{RegDst}: determines if the register destination number for the write register comes from the \texttt{rt} field (deasserted), or from the \texttt{rd} field (asserted).  If the instruction is a \texttt{lw} than the register write value will come from \texttt{rt} and if an R-type it will come from \texttt{rd}. 
+\item \texttt{ALUSrc}: This determines if the value to be added to the first read register is the second read register (in the case of an R-type instruction) or the immediate field (in the case of a load/store).  
+\item \texttt{Zero}: This is used in \texttt{beq} instructions and if asserted means that the two values being compared are equal and thus a branch should be taken.
+\end{itemize}
+\item \textbf{Memory}
+\begin{itemize}
+\item \texttt{MemWrite}: This is asserted on \texttt{sw} instructions.  
+\item \texttt{MemRead}: This is asserted on \texttt{lw} instructions.
+\item \texttt{PCSrc}: Determines whether the PC should be \texttt{PC+4} or the branch address.
+\end{itemize}
+\item \textbf{Writeback}
+\begin{itemize}
+\item \texttt{MemtoReg}: This determines if the value read from memory or the result of the ALU should be written back to the register destination.  
+\end{itemize}
+\end{itemize}
+\[    \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
+\hline \multirow[b]{2}{*}{ Instruction } & \multicolumn{4}{|c|}{\begin{tabular}{l} 
+Execution/address calculation stage \\
+control lines
+\end{tabular}} & \multicolumn{3}{|c|}{\begin{tabular}{l} 
+Memory access stage \\
+control lines
+\end{tabular}} & \multicolumn{2}{|c|}{\begin{tabular}{c} 
+Write-back stage \\
+control lines \\
+\end{tabular}} \\
+\hline & RegDst & ALUOp1 & ALuOp0 & ALUSrc & Branch & \begin{tabular}{l} 
+Mem- \\
+Read
+\end{tabular} & \begin{tabular}{l} 
+Mem- \\
+Write
+\end{tabular} & \begin{tabular}{l} 
+Reg- \\
+Write
+\end{tabular} & \begin{tabular}{l} 
+Memto- \\
+Reg
+\end{tabular} \\
+\hline R-format & 1 & 1 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
+\hline $1 \mathrm{w}$ & 0 & 0 & 0 & 1 & 0 & 1 & 0 & 1 & 1 \\
+\hline SW & X & 0 & 0 & 1 & 0 & 0 & 1 & 0 & X \\
+\hline beq & X & 0 & 1 & 0 & 1 & 0 & 0 & 0 & X \\
+\hline
+\end{tabular}
+\]
+
+\subsection{Data Hazards: Forwarding versus Stalling}\label{subsec:}
+
 
 
 
